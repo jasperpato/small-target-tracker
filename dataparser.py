@@ -29,7 +29,7 @@ class Dataloader(object):
             img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
             gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
             gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
-            self.loaded_frames[frame_no] = (img, gt_data.to_numpy())
+            self.loaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
             frame_no += 1
     
     
@@ -45,7 +45,7 @@ class Dataloader(object):
             img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
             gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
             gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
-            return (img, gt_data.to_numpy())
+            return (frame_no, img, gt_data.to_numpy())
         
     
     def __iter__(self):
