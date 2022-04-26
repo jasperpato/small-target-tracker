@@ -6,7 +6,7 @@ import psutil
 import regex as re
 import pandas as pd
 
-RAM_USAGE = 5
+RAM_LIMIT = 90 # maximam RAM usage percentage allowed
 class Dataloader(object):
     def __init__(self, path, img_file_pattern='*.jpg', frame_range=None):        
         img_paths = glob(f'{path}/img/{img_file_pattern}', recursive=True)
@@ -29,12 +29,12 @@ class Dataloader(object):
         start_frame, end_frame = self.frame_range
         frame_no = max(self.preloaded_frames.keys()) + 1 if self.preloaded_frames.keys() else start_frame
         
-        while psutil.virtual_memory().percent > 100 - RAM_USAGE and frame_no < end_frame:
+        while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no < end_frame:
             if frame_no in self.frame_paths:
                 img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
                 gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
                 gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
-                self.loaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
+                self.preloaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
             frame_no += 1
     
     
@@ -45,7 +45,7 @@ class Dataloader(object):
 
     def __call__(self, frame_no):
         if frame_no in self.preloaded_frames:
-            return self.preloaded_frames.pop(frame_no)
+            return self.preloaded_frames.pop(frame_no) # pop or get?
         elif frame_no in self.frame_paths:
             img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
             gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
@@ -68,12 +68,16 @@ class Dataloader(object):
         
     
 if __name__ == '__main__':
+
+    from object_detection import object_detection
+
     # TESTING
     current_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(current_dir)
     dataloader = Dataloader('/Users/jasperpaterson/Local/object-tracking/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-    for frame_no, img, data in dataloader:
-        print(frame_no, img.shape, data.shape)
+    
+    frames = list(dataloader.preloaded_frames.values())[:3]
+    object_detection(frames)
     
     
     
