@@ -6,11 +6,11 @@ import psutil
 import regex as re
 import pandas as pd
 
-
+RAM_USAGE = 5
 class Dataloader(object):
-    def __init__(self, folder_path, img_file_pattern='*.jpg', frame_range=None):        
-        img_paths = glob(f'{folder_path}/**/{img_file_pattern}', recursive=True)
-        gt_file = glob(f'{folder_path}/**/gt.txt', recursive=True)[0]
+    def __init__(self, path, img_file_pattern='*.jpg', frame_range=None):        
+        img_paths = glob(f'{path}/img/{img_file_pattern}', recursive=True)
+        gt_file = glob(f'{path}/gt/gt.txt', recursive=True)[0]
         
         get_frame = lambda p: int(re.search('\d+', Path(p).stem).group())
         self.frame_paths = {get_frame(p): p for p in img_paths}
@@ -29,7 +29,7 @@ class Dataloader(object):
         start_frame, end_frame = self.frame_range
         frame_no = max(self.preloaded_frames.keys()) + 1 if self.preloaded_frames.keys() else start_frame
         
-        while psutil.virtual_memory().percent > 90 and frame_no < end_frame:
+        while psutil.virtual_memory().percent > 100 - RAM_USAGE and frame_no < end_frame:
             if frame_no in self.frame_paths:
                 img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
                 gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     # TESTING
     current_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(current_dir)
-    dataloader = Dataloader('../VISO/mot/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+    dataloader = Dataloader('/Users/jasperpaterson/Local/object-tracking/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
     for frame_no, img, data in dataloader:
         print(frame_no, img.shape, data.shape)
     
