@@ -77,7 +77,8 @@ if __name__ == '__main__':
     dataloader = Dataloader('/Users/jasperpaterson/Local/object-tracking/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
     
     frames = list(dataloader.preloaded_frames.values())[:3]
-    object_detection(frames)
+    
+    b = objects(frames)
     
     
     
