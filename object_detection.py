@@ -35,6 +35,8 @@ def objects(grays):
   return np.logical_and(b1, b2)
 
 
+# Implementation a new region growing function that is applied to 
+# centroids of candidate clusters
 def region_growing_v2(gray, binary):
   binary = deepcopy(binary)
   height, width = gray.shape
@@ -51,7 +53,7 @@ def region_growing_v2(gray, binary):
       t1 = norm.ppf(0.005, loc=mean, scale=sd)
       t2 = norm.ppf(0.995, loc=mean, scale=sd)
       
-      new_bin_region = np.bitwise_or((gray_region > t1 and gray_region < t2), 
+      new_bin_region = np.logical_or((gray_region > t1 and gray_region < t2), 
                                       binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6])
       binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6] = new_bin_region
   return binary
@@ -116,14 +118,16 @@ if __name__ == '__main__':
     # TESTING
     current_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(current_dir)
-    dataloader = Dataloader('/Users/jasperpaterson/Local/object-tracking/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+    dataloader = Dataloader('../VISO/mot/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
     
-    frames = list(dataloader.preloaded_frames.values())[:3]
+    frames = list(dataloader.preloaded_frames.values())[1:4]
     
-    gs = [frame2gray(f) for f in frames]
+    gs = [img for _, img, _ in frames]
+    print([frame_no for frame_no, _, _ in frames])
     plt.imshow(gs[1], cmap='gray')
 
     b = objects(gs)
+    print(np.sum(b))
     plt.figure()
     plt.imshow(b, cmap='gray')
 
