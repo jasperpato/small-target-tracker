@@ -34,6 +34,29 @@ def objects(grays):
   # intersection
   return np.logical_and(b1, b2)
 
+
+def region_growing_v2(gray, binary):
+  binary = deepcopy(binary)
+  height, width = gray.shape
+  labeled_image = measure.label(binary, background=0)
+  blobs = measure.regionprops(labeled_image)
+  
+  for blob in blobs:
+    ctr_row, ctr_col = blob.centroid
+    if ctr_row - 5 >= 0 and ctr_row + 5 < height and ctr_col - 5 >= 0 and ctr_col + 5 > width: 
+      gray_region = gray[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6]
+      
+      mean = np.mean(gray_region)
+      sd = np.std(gray_region)
+      t1 = norm.ppf(0.005, loc=mean, scale=sd)
+      t2 = norm.ppf(0.995, loc=mean, scale=sd)
+      
+      new_bin_region = np.bitwise_or((gray_region > t1 and gray_region < t2), 
+                                      binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6])
+      binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6] = new_bin_region
+  return binary
+      
+        
 def region_growing(gray, binary):
   '''
   Input: a grayscale image and corresponding binary image containing moving candidate pixels
