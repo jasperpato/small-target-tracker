@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 RAM_LIMIT = 90 # maximam RAM usage percentage allowed
 
+
 class Dataloader(object):
     def __init__(self, path, img_file_pattern='*.jpg', frame_range=None):        
         img_paths = glob(f'{path}/img/{img_file_pattern}', recursive=True)
