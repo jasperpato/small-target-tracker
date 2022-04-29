@@ -5,6 +5,7 @@ import cv2
 import psutil
 import regex as re
 import pandas as pd
+import matplotlib.pyplot as plt
 
 RAM_LIMIT = 90 # maximam RAM usage percentage allowed
 class Dataloader(object):
@@ -64,12 +65,10 @@ class Dataloader(object):
 
     def __next__(self):
         frame_no = next(self.frame_iterator)
-        return self.preloaded_frames.pop(frame_no, None) or self.__call__(frame_no)
+        return self.preloaded_frames.pop(frame_no, None) or self.__call__(frame_no) # pop or get?
         
     
 if __name__ == '__main__':
-
-    from object_detection import object_detection
 
     # TESTING
     current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -78,7 +77,10 @@ if __name__ == '__main__':
     
     frames = list(dataloader.preloaded_frames.values())[:3]
     
-    b = objects(frames)
+    # b = objects(frames)
+    # plt.imshow(b)
+
+    # plt.show(block=True)
     
     
     
