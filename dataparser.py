@@ -64,7 +64,7 @@ class Dataloader(object):
 
     def __next__(self):
         frame_no = next(self.frame_iterator)
-        return self.preloaded_frames.pop(frame_no, None) or self.__call__(frame_no)
+        return self.__call__(frame_no)
         
     
 if __name__ == '__main__':
