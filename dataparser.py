@@ -10,6 +10,17 @@ import matplotlib.pyplot as plt
 RAM_LIMIT = 90 # maximam RAM usage percentage allowed
 
 
+def read_img(frame_no, img_path, gt_df):
+    """
+    Read image from file path
+    """
+    img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    gt_data = gt_df[gt_df.frame.eq(frame_no)]
+    gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
+    return frame_no, img, gt_data.to_numpy()
+
+
 class Dataloader(object):
     def __init__(self, path, img_file_pattern='*.jpg', frame_range=None):        
         img_paths = glob(f'{path}/img/{img_file_pattern}', recursive=True)
@@ -23,7 +34,7 @@ class Dataloader(object):
         if self.frame_range[0] < full_frame_range[0] or self.frame_range[1] > full_frame_range[1]:
             raise ValueError('Frame range {} is out of range {}'.format(frame_range, full_frame_range))
         
-        self.gt_data = pd.read_csv(gt_file, sep=',', usecols=range(6), names=['frame', 'track_id', 'tl_x', 'tl_y', 'width', 'height'])
+        self.gt_df = pd.read_csv(gt_file, sep=',', usecols=range(6), names=['frame', 'track_id', 'tl_x', 'tl_y', 'width', 'height'])
         self.preloaded_frames = {}
         self.preload_frames()
         
@@ -34,10 +45,8 @@ class Dataloader(object):
         
         while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no < end_frame:
             if frame_no in self.frame_paths:
-                img = cv2.imread(self.frame_paths[frame_no])
-                gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
-                gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
-                self.preloaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
+                img_path = self.frame_paths[frame_no]
+                return read_img(frame_no, img_path, self.gt_df)
             frame_no += 1
     
     
@@ -50,11 +59,8 @@ class Dataloader(object):
         if frame_no in self.preloaded_frames:
             return self.preloaded_frames.get(frame_no)
         elif frame_no in self.frame_paths:
-            img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_COLOR)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
-            gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
-            return (frame_no, img, gt_data.to_numpy())
+            img_path = self.frame_paths[frame_no]
+            return read_img(frame_no, img_path, self.gt_df)
         else:
             raise ValueError('Frame {} could not be found'.format(frame_no))
         
