@@ -1,6 +1,6 @@
 from glob import glob
 from pathlib import Path
-import os
+import sys
 import cv2
 import psutil
 import regex as re
@@ -73,11 +73,10 @@ class Dataloader(object):
     
 if __name__ == '__main__':
 
+    dataset_path = sys.argv[1].strip('/')
+
     # TESTING
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    os.chdir(current_dir)
-    dataloader = Dataloader('/Users/jasperpaterson/Local/object-tracking/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-    
+    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
     frames = list(dataloader.preloaded_frames.values())[:3]
     
     # b = objects(frames)
