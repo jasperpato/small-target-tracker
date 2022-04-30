@@ -9,8 +9,8 @@ import pandas as pd
 
 class Dataloader(object):
     def __init__(self, folder_path, img_file_pattern='*.jpg', frame_range=None):        
-        img_paths = glob(f'{folder_path}/**/{img_file_pattern}', recursive=True)
-        gt_file = glob(f'{folder_path}/**/gt.txt', recursive=True)[0]
+        img_paths = glob(f'{folder_path}/img/{img_file_pattern}', recursive=True)
+        gt_file = glob(f'{folder_path}/gt/gt.txt', recursive=True)[0]
         
         get_frame = lambda p: int(re.search('\d+', Path(p).stem).group())
         self.frame_paths = {get_frame(p): p for p in img_paths}
