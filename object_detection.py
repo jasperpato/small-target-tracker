@@ -45,7 +45,7 @@ def region_growing_v2(gray, binary):
   
   for blob in blobs:
     ctr_row, ctr_col = blob.centroid
-    if ctr_row - 5 >= 0 and ctr_row + 5 < height and ctr_col - 5 >= 0 and ctr_col + 5 > width: 
+    if ctr_row - 5 >= 0 and ctr_row + 5 < height and ctr_col - 5 >= 0 and ctr_col + 5 < width: 
       gray_region = gray[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6]
       
       mean = np.mean(gray_region)
@@ -123,16 +123,15 @@ if __name__ == '__main__':
     frames = list(dataloader.preloaded_frames.values())[1:4]
     
     gs = [img for _, img, _ in frames]
-    print([frame_no for frame_no, _, _ in frames])
     plt.imshow(gs[1], cmap='gray')
 
     b = objects(gs)
-    print(np.sum(b))
+    print('Number of detected objects:', np.sum(b))
     plt.figure()
     plt.imshow(b, cmap='gray')
 
-    b = region_growing(gs[1], b)
-    plt.figure()
-    plt.imshow(b, cmap='gray')
+    # b = region_growing(gs[1], b)
+    # plt.figure()
+    # plt.imshow(b, cmap='gray')
 
     plt.show(block=True)
