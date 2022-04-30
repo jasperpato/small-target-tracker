@@ -24,7 +24,8 @@ def objects(grays):
   # mask
   b1, b2 = dif1 > th1, dif2 > th2
   # intersection
-  return np.logical_and(b1, b2)
+  return np.array(np.logical_and(b1, b2), dtype=np.uint8)
+
 
 
 def region_growing(gray, binary):
