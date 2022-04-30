@@ -57,10 +57,10 @@ def region_growing(gray, binary):
 
 if __name__ == '__main__':
 
-  VISO_path = sys.argv[1].strip('/')
+  dataset_path = sys.argv[1].strip('/')
 
   # TESTING
-  dataloader = Dataloader(f'{VISO_path}/mot/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   
   frames = list(dataloader.preloaded_frames.values())[:3]
   
@@ -71,7 +71,7 @@ if __name__ == '__main__':
   plt.figure()
   plt.imshow(b, cmap='gray')
 
-  b = region_growing_v2(gs[1], b)
+  b = region_growing(gs[1], b)
   plt.figure()
   plt.imshow(b, cmap='gray')
 
