@@ -27,7 +27,7 @@ def objects(grays):
   return np.logical_and(b1, b2)
 
 
-def region_growing_v2(gray, binary):
+def region_growing(gray, binary):
   '''
   Implementation a new region growing function that is applied to centroids of candidate clusters
   '''
@@ -44,11 +44,12 @@ def region_growing_v2(gray, binary):
       
       mean = np.mean(gray_region)
       sd = np.std(gray_region)
-      t1 = norm.ppf(0.005, loc=mean, scale=sd)
-      t2 = norm.ppf(0.995, loc=mean, scale=sd)
+      t1 = norm.ppf(0.20, loc=mean, scale=sd)
+      t2 = norm.ppf(0.80, loc=mean, scale=sd)
       
-      new_bin_region = np.logical_or((gray_region > t1 and gray_region < t2), 
-                                      binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6])
+      new_objects = np.logical_and(gray_region > t1, gray_region < t2)
+      binary_region = binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6]
+      new_bin_region = np.logical_or(new_objects, binary_region)
       binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6] = new_bin_region
 
   return binary
@@ -56,14 +57,12 @@ def region_growing_v2(gray, binary):
 
 if __name__ == '__main__':
 
-  path = sys.argv[1] # path to and including mot
+  VISO_path = sys.argv[1].strip('/')
 
   # TESTING
-  current_dir = os.path.dirname(os.path.realpath(__file__))
-  os.chdir(current_dir)
-  dataloader = Dataloader(f'{path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  dataloader = Dataloader(f'{VISO_path}/mot/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   
-  frames = list(dataloader.preloaded_frames.values())[1:4]
+  frames = list(dataloader.preloaded_frames.values())[:3]
   
   gs = [color.rgb2gray(img) for _, img, _ in frames]
   plt.imshow(gs[1], cmap='gray')
