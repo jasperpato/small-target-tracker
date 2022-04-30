@@ -50,7 +50,8 @@ class Dataloader(object):
         if frame_no in self.preloaded_frames:
             return self.preloaded_frames.get(frame_no)
         elif frame_no in self.frame_paths:
-            img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
+            img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_COLOR)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
             gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
             return (frame_no, img, gt_data.to_numpy())
