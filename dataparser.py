@@ -34,7 +34,7 @@ class Dataloader(object):
         
         while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no < end_frame:
             if frame_no in self.frame_paths:
-                img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_GRAYSCALE)
+                img = cv2.imread(self.frame_paths[frame_no])
                 gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
                 gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
                 self.preloaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
