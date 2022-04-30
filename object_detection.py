@@ -57,9 +57,10 @@ def region_growing(gray, binary):
 
 if __name__ == '__main__':
 
-  dataset_path = sys.argv[1].strip('/')
+  dataset_path = sys.argv[1].rstrip('/')
 
   # TESTING
+  print(f'{dataset_path}/car/001')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   
   frames = list(dataloader.preloaded_frames.values())[:3]
