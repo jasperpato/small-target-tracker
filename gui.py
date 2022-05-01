@@ -62,7 +62,7 @@ class Slideshow(QMainWindow):
         self.pathname = QFileDialog.getExistingDirectory(self, "Select directory")
         
         if self.pathname:
-            self.data = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 2))
+            self.data = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 100))
             self.show()
         else:
             self.close()
@@ -93,27 +93,38 @@ class Slideshow(QMainWindow):
 
             self.img.append(image)
         
-        for i in self.img:
-            self.label.setPixmap(i)
-            self.label.show()
+        
+        self.timer = QBasicTimer()
+        self.step = 0
+        self.delay = 1000 #ms
 
-        self.graphData()
-        self.dialog2 = Statistics(self)
-        self.dialog2.show()
-        return
+        self.timerEvent()
 
     def graphData(self):
         pen = pg.mkPen(width = 10)
         self.graphWidget = pg.PlotWidget()
         self.graphWidget.show()
         seconds = [i for i in range(1, len(self.num_object)+1)]
-        print(self.num_object)
         objects = self.num_object
 
         self.graphWidget.plot(seconds, objects, pen=pen)
         self.graphWidget.setTitle("Moving objects per frame", size = "20pt")
         self.graphWidget.setLabel('left', 'Average Moving Object (per frame)')
         self.graphWidget.setLabel('bottom', 'Seconds (s)')
+    
+    def timerEvent(self, e=None):
+        if self.step >= len(self.img):
+            self.timer.stop()
+            self.step = 0
+            self.graphData()
+            self.dialog2 = Statistics(self)
+            self.dialog2.show()
+            self.painterInstance.end()
+            return 
+        self.timer.start(self.delay, self)
+        self.label.setPixmap(self.img[self.step])
+        self.label.show()
+        self.step += 1
 
 class Statistics(QMainWindow):
     def __init__(self, parent = None):
