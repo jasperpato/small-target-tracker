@@ -1,16 +1,19 @@
 from glob import glob
 from pathlib import Path
-import os
+import sys
 import cv2
 import psutil
 import regex as re
 import pandas as pd
+import matplotlib.pyplot as plt
+
+RAM_LIMIT = 90 # maximam RAM usage percentage allowed
 
 
 class Dataloader(object):
-    def __init__(self, folder_path, img_file_pattern='*.jpg', frame_range=None):        
-        img_paths = glob(f'{folder_path}/img/{img_file_pattern}', recursive=True)
-        gt_file = glob(f'{folder_path}/gt/gt.txt', recursive=True)[0]
+    def __init__(self, path, img_file_pattern='*.jpg', frame_range=None):        
+        img_paths = glob(f'{path}/img/{img_file_pattern}', recursive=True)
+        gt_file = glob(f'{path}/gt/gt.txt', recursive=True)[0]
         
         get_frame = lambda p: int(re.search('\d+', Path(p).stem).group())
         self.frame_paths = {get_frame(p): p for p in img_paths}
@@ -29,12 +32,12 @@ class Dataloader(object):
         start_frame, end_frame = self.frame_range
         frame_no = max(self.preloaded_frames.keys()) + 1 if self.preloaded_frames.keys() else start_frame
         
-        while psutil.virtual_memory().percent > 90 and frame_no < end_frame:
+        while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no < end_frame:
             if frame_no in self.frame_paths:
-                img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
+                img = cv2.imread(self.frame_paths[frame_no])
                 gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
                 gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
-                self.loaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
+                self.preloaded_frames[frame_no] = (frame_no, img, gt_data.to_numpy())
             frame_no += 1
     
     
@@ -45,9 +48,10 @@ class Dataloader(object):
 
     def __call__(self, frame_no):
         if frame_no in self.preloaded_frames:
-            return self.preloaded_frames.pop(frame_no)
+            return self.preloaded_frames.get(frame_no)
         elif frame_no in self.frame_paths:
-            img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_UNCHANGED)
+            img = cv2.imread(self.frame_paths[frame_no], cv2.IMREAD_COLOR)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             gt_data = self.gt_data[self.gt_data.frame.eq(frame_no)]
             gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
             return (frame_no, img, gt_data.to_numpy())
@@ -64,16 +68,21 @@ class Dataloader(object):
 
     def __next__(self):
         frame_no = next(self.frame_iterator)
-        return self.preloaded_frames.pop(frame_no, None) or self.__call__(frame_no)
+        return self.__call__(frame_no)
         
     
 if __name__ == '__main__':
+
+    dataset_path = sys.argv[1].strip('/')
+
     # TESTING
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    os.chdir(current_dir)
-    dataloader = Dataloader('../VISO/mot/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-    for frame_no, img, data in dataloader:
-        print(frame_no, img.shape, data.shape)
+    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+    frames = list(dataloader.preloaded_frames.values())[:3]
+    
+    # b = objects(frames)
+    # plt.imshow(b)
+
+    # plt.show(block=True)
     
     
     
