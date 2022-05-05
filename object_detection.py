@@ -85,7 +85,7 @@ if __name__ == '__main__':
   print(f'{dataset_path}/car/001')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   frames = list(dataloader.preloaded_frames.values())
-  i0 = 10
+  i0 = 5
   
   for i in range(i0, len(frames) - i0):
     f1 = frames[i - i0]
@@ -97,9 +97,9 @@ if __name__ == '__main__':
 
     b = objects(gs)
     fig, ax = plt.subplots()
-    plt.imshow(b, cmap='gray')
+    plt.imshow(binary, cmap='gray')
 
-    b = region_growing(gs[1], b)
+    grown = region_growing(grays[1], binary)
     fig2, ax2 = plt.subplots()
     ax2.imshow(b, cmap='gray')
 
