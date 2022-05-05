@@ -50,6 +50,9 @@ def region_growing(gray, binary):
 
   for blob in blobs:
     blob_rows, blob_cols = zip(*blob.coords)
+    if len(blob.coords) < 10:
+      binary[blob_rows, blob_cols] = 0
+      continue
 
     ctr_row, ctr_col = blob.centroid
     ctr_row, ctr_col = int(ctr_row), int(ctr_col)
@@ -62,19 +65,11 @@ def region_growing(gray, binary):
 
     gray_region = gray[l:r, b:t]
     blob_grays = gray[blob_rows, blob_cols]
-
-    # testing some removal of false blobs
-    # if blob.area < 4 and np.sum(gray_region) < 80:
-    #   binary[blob_rows, blob_cols] = 0
-    #   continue
       
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
-    if not sd: continue
-
-    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
+    t1 = norm.ppf(0.1, loc=mean, scale=sd)
     t2 = 2 * mean - t1
-
     binary[l:r, b:t] = np.logical_or(np.logical_and(gray_region > t1, gray_region < t2), binary[l:r, b:t])
 
   return binary
@@ -82,13 +77,14 @@ def region_growing(gray, binary):
 
 if __name__ == '__main__':
 
-  dataset_path = sys.argv[1].rstrip('/')
+  # dataset_path = sys.argv[1].rstrip('/')
+  dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
 
   # TESTING
   print(f'{dataset_path}/car/001')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   frames = list(dataloader.preloaded_frames.values())
-  i0 = 1
+  i0 = 10
   
   for i in range(i0, len(frames) - i0):
     f1 = frames[i - i0]
@@ -106,11 +102,11 @@ if __name__ == '__main__':
     fig2, ax2 = plt.subplots()
     ax2.imshow(b, cmap='gray')
 
-    # for box in f2[2]:
-    #   rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-    #   rect2 = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-    #   ax.add_patch(rect)
-    #   ax2.add_patch(rect2)
+    for box in f2[2]:
+      rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+      rect2 = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+      ax.add_patch(rect)
+      ax2.add_patch(rect2)
 
     plt.show(block=True)
     break
