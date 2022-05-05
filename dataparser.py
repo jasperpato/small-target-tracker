@@ -1,5 +1,6 @@
 from glob import glob
 from pathlib import Path
+from skimage import io
 import sys
 import cv2
 import psutil
@@ -14,8 +15,7 @@ def read_img(frame_no, img_path, gt_df):
     """
     Read image from file path
     """
-    img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = io.imread(img_path)
     gt_data = gt_df[gt_df.frame.eq(frame_no)]
     gt_data = gt_data[['tl_x', 'tl_y', 'width', 'height']]  
     return frame_no, img, gt_data.to_numpy()
@@ -78,7 +78,6 @@ class Dataloader(object):
         
     
 if __name__ == '__main__':
-
     dataset_path = sys.argv[1].strip('/')
 
     # TESTING
