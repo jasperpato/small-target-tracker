@@ -8,19 +8,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from skimage import measure, color
 
-
-def objects_v2(grays):
+def objects(grays):
   '''
   Takes a list of three grayscale images.
   Outputs a single numpy array representing a binary image, in which clusters of
   1s are candidate moving objects.
   '''
   g1, g2, g3 = grays
-  height, width = grays[0].shape
+  height, width = grays[1].shape
   binary = np.zeros((height, width), dtype=np.uint8)
   
-  for i in range(0, height - 30, 30):
-    for j in range(0, width - 30, 30):  
+  for i in range(0, height, 30):
+    for j in range(0, width, 30):  
       g1_region = g1[i:i+30, j:j+30]
       g2_region = g2[i:i+30, j:j+30]
       g3_region = g3[i:i+30, j:j+30]
@@ -39,24 +38,6 @@ def objects_v2(grays):
   return binary
 
 
-def objects(grays):
-  '''
-  Takes a list of three grayscale images.
-  Outputs a single numpy array representing a binary image, in which clusters of
-  1s are candidate moving objects.
-  '''
-  g1, g2, g3 = grays
-  # difference
-  dif1, dif2 = np.abs(g1 - g2), np.abs(g2 - g3)
-  # mean
-  m1, m2 = np.mean(dif1), np.mean(dif2)
-  # threshold
-  th1, th2 = -math.log(0.005) * m1, -math.log(0.995) * m2
-  # intersection
-  b1, b2 = dif1 > th1, dif2 > th2
-  return np.logical_and(b1, b2)
-
-
 def region_growing(gray, binary):
   '''
   Implementation a new region growing function that is applied to centroids of candidate clusters
@@ -65,25 +46,36 @@ def region_growing(gray, binary):
   height, width = gray.shape
   labeled_image = measure.label(binary, background=0)
   blobs = measure.regionprops(labeled_image)
-  
+
   for blob in blobs:
+    blob_rows, blob_cols = zip(*blob.coords)
+
     ctr_row, ctr_col = blob.centroid
     ctr_row, ctr_col = int(ctr_row), int(ctr_col)
     
-    if ctr_row - 5 >= 0 and ctr_row + 5 < height and ctr_col - 5 >= 0 and ctr_col + 5 < width: 
-      gray_region = gray[ctr_row-5:ctr_row+6, ctr_col-5:ctr_col+6]
-      blob_rows, blob_cols = zip(*blob.coords)
-      blob_grays = gray[blob_rows, blob_cols]
+    # 11 x 11 box bounds
+    l = ctr_row - 5 if ctr_row - 5 >= 0 else 0
+    r = ctr_row + 5 if ctr_row + 5 < height else height
+    b = ctr_col - 5 if ctr_col - 5 >= 0 else 0
+    t = ctr_col + 5 if ctr_col + 5 < width else width
+
+    gray_region = gray[l:r, b:t]
+    blob_grays = gray[blob_rows, blob_cols]
+
+    # testing some removal of false blobs
+    # if blob.area < 4 and np.sum(gray_region) < 80:
+    #   binary[blob_rows, blob_cols] = 0
+    #   continue
       
-      mean = np.mean(blob_grays)
-      sd = np.std(blob_grays)
-      if sd == 0: continue
-      t1 = norm.ppf(0.005, loc=mean, scale=sd)
-      t2 = norm.ppf(0.995, loc=mean, scale=sd)
-      
-      new_objects = np.logical_and(gray_region > t1, gray_region < t2)
-      binary[ctr_row-5:ctr_row+6, ctr_col-5:ctr_col+6] = \
-        np.logical_or(new_objects, binary[ctr_row-5:ctr_row+6, ctr_col-5:ctr_col+6])
+    mean = np.mean(blob_grays)
+    sd = np.std(blob_grays)
+    if not sd: continue
+
+    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
+    t2 = norm.ppf(1-5e-3, loc=mean, scale=sd) # 2 * mean - t1
+
+    binary[l:r, b:t] = np.logical_and(gray_region > t1, gray_region < t2)
+
   return binary
       
 
@@ -103,20 +95,19 @@ if __name__ == '__main__':
     f3 = frames[i + i0]
   
     gs = (color.rgb2gray(f1[1]), color.rgb2gray(f2[1]), color.rgb2gray(f3[1]))
-    fig, ax = plt.subplots()
-    bboxes = f2[2]
-    ax.imshow(f2[1], cmap='gray')
-    for box in bboxes:
-      rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-      ax.add_patch(rect)
+    # plt.imshow(f2[1], cmap='gray')
 
-    b = objects_v2(gs)
-    plt.figure()
-    plt.imshow(b, cmap='gray')
+    b = objects(gs)
+    # plt.figure()
+    # plt.imshow(b, cmap='gray')
 
     b = region_growing(gs[1], b)
-    plt.figure()
-    plt.imshow(b, cmap='gray')
+    fig2, ax2 = plt.subplots()
+    ax2.imshow(b, cmap='gray')
+
+    for box in f2[2]:
+      rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+      ax2.add_patch(rect)
 
     plt.show(block=True)
     break
