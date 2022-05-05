@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from skimage import measure, color
 
+
 def objects(grays):
   '''
   Takes a list of three grayscale images.
@@ -81,35 +82,29 @@ def region_growing(gray, binary):
 if __name__ == '__main__':
 
   dataset_path = sys.argv[1].rstrip('/')
-  # dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
-
-  # TESTING
-  print(f'{dataset_path}/car/001')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   frames = list(dataloader.preloaded_frames.values())
-  i0 = 10
+  i0 = 5
   
   for i in range(i0, len(frames) - i0):
-    f1 = frames[i - i0]
-    f2 = frames[i]
-    f3 = frames[i + i0]
-  
-    gs = (color.rgb2gray(f1[1]), color.rgb2gray(f2[1]), color.rgb2gray(f3[1]))
-    # plt.imshow(f2[1], cmap='gray')
-
-    b = objects(gs)
+    imgs = (frames[i - i0], frames[i], frames[i + i0])
+    grays = [color.rgb2gray(i[1]) for i in imgs]
+    print(grays)
+    
+    binary = objects(grays)
     fig, ax = plt.subplots()
-    plt.imshow(b, cmap='gray')
+    plt.imshow(binary, cmap='gray')
 
-    r = region_growing(gs[1], b)
+    grown = region_growing(grays[1], binary)
     fig2, ax2 = plt.subplots()
-    ax2.imshow(r, cmap='gray')
+    ax2.imshow(grown, cmap='gray')
 
-    for box in f2[2]:
-      rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-      rect2 = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-      ax.add_patch(rect)
-      ax2.add_patch(rect2)
+    if len(sys.argv) > 2 and sys.argv[2] == '--boxes':
+      for box in imgs[2][2]:
+        rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+        rect2 = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+        ax2.add_patch(rect2)
 
     plt.show(block=True)
     break
