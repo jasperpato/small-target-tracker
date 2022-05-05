@@ -55,10 +55,10 @@ def region_growing(gray, binary):
     ctr_row, ctr_col = int(ctr_row), int(ctr_col)
     
     # 11 x 11 box bounds
-    l = ctr_row - 5 if ctr_row - 5 >= 0 else 0
-    r = ctr_row + 5 if ctr_row + 5 < height else height
-    b = ctr_col - 5 if ctr_col - 5 >= 0 else 0
-    t = ctr_col + 5 if ctr_col + 5 < width else width
+    l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
+    r = ctr_col + 5 if ctr_col + 5 < width else width
+    t = ctr_row - 5 if ctr_row - 5 >= 0 else 0
+    b = ctr_row + 5 if ctr_row + 5 < height else height
 
     gray_region = gray[l:r, b:t]
     blob_grays = gray[blob_rows, blob_cols]
