@@ -61,8 +61,8 @@ def region_growing(gray, binary):
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
     r = ctr_col + 5 if ctr_col + 5 < width else width
-    t = ctr_row - 5 if ctr_row - 5 >= 0 else 0
-    b = ctr_row + 5 if ctr_row + 5 < height else height
+    b = ctr_row - 5 if ctr_row - 5 >= 0 else 0
+    t = ctr_row + 5 if ctr_row + 5 < height else height
 
     gray_region = gray[b:t, l:r]
     blob_grays = gray[blob_rows, blob_cols]
@@ -101,9 +101,9 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     plt.imshow(b, cmap='gray')
 
-    b = region_growing(gs[1], b)
+    r = region_growing(gs[1], b)
     fig2, ax2 = plt.subplots()
-    ax2.imshow(b, cmap='gray')
+    ax2.imshow(r, cmap='gray')
 
     for box in f2[2]:
       rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
