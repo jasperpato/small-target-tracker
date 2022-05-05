@@ -50,7 +50,8 @@ def region_growing(gray, binary):
 
   for blob in blobs:
     blob_rows, blob_cols = zip(*blob.coords)
-    if len(blob.coords) < 10:
+
+    if len(blob.coords) < 2:
       binary[blob_rows, blob_cols] = 0
       continue
 
@@ -63,22 +64,24 @@ def region_growing(gray, binary):
     t = ctr_row - 5 if ctr_row - 5 >= 0 else 0
     b = ctr_row + 5 if ctr_row + 5 < height else height
 
-    gray_region = gray[l:r, b:t]
+    gray_region = gray[b:t, l:r]
     blob_grays = gray[blob_rows, blob_cols]
       
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
-    t1 = norm.ppf(0.1, loc=mean, scale=sd)
+    if not sd: continue
+
+    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
     t2 = 2 * mean - t1
-    binary[l:r, b:t] = np.logical_or(np.logical_and(gray_region > t1, gray_region < t2), binary[l:r, b:t])
+    binary[b:t, l:r] = np.logical_or(np.logical_and(gray_region > t1, gray_region < t2), binary[b:t, l:r])
 
   return binary
       
 
 if __name__ == '__main__':
 
-  # dataset_path = sys.argv[1].rstrip('/')
-  dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
+  dataset_path = sys.argv[1].rstrip('/')
+  # dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
 
   # TESTING
   print(f'{dataset_path}/car/001')
