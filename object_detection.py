@@ -1,11 +1,12 @@
 import sys
-from copy import deepcopy
 import math
 import numpy as np
-from scipy.stats import norm
-from dataparser import Dataloader
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from copy import deepcopy
+from scipy.stats import norm
+from scipy import signal
+from dataparser import Dataloader
 from skimage import measure, color
 
 
@@ -46,7 +47,7 @@ def region_growing(gray, binary):
   '''
   binary = deepcopy(binary)
   height, width = gray.shape
-  labeled_image = measure.label(binary, background=0)
+  labeled_image = measure.label(binary, background=0, connectivity=2)
   blobs = measure.regionprops(labeled_image)
 
   for blob in blobs:
@@ -56,26 +57,27 @@ def region_growing(gray, binary):
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
 
-    if len(blob.coords) == 1:
+    if len(blob.coords) < 3:
       binary[blob_rows, blob_cols] = 0
-    if not sd:
       continue
+      
+    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
+    t2 = 2 * mean - t1  
+    if t2 - t1 > 0.15: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
     r = ctr_col + 6 if ctr_col + 5 < width else width
     b = ctr_row - 5 if ctr_row - 5 >= 0 else 0
     t = ctr_row + 6 if ctr_row + 5 < height else height
+    
     gray_region = gray[b:t, l:r]
-
-    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
-    t2 = 2 * mean - t1
-    binary[b:t, l:r] = np.logical_or(
-      np.logical_and(gray_region > t1, gray_region < t2), binary[b:t, l:r])
+    candidates = np.logical_and(gray_region > t1, gray_region < t2)
+    binary[b:t, l:r] = np.logical_or(candidates, binary[b:t, l:r])
     
   return binary
+    
       
-
 if __name__ == '__main__':
 
   # dataset_path = sys.argv[1].rstrip('/')
@@ -85,27 +87,28 @@ if __name__ == '__main__':
   print(f'{dataset_path}/car/001')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   frames = list(dataloader.preloaded_frames.values())
-  i0 = 5
+  i0 = 10
   
   for i in range(i0, len(frames) - i0):
     f1 = frames[i - i0]
     f2 = frames[i]
     f3 = frames[i + i0]
-  
     gs = (color.rgb2gray(f1[1]), color.rgb2gray(f2[1]), color.rgb2gray(f3[1]))
-    plt.imshow(f2[1], cmap='gray')
+    
+    plt.figure()
+    plt.imshow(gs[1], cmap='gray')
 
     b = objects(gs)
-    fig, ax = plt.subplots()
-    plt.imshow(binary, cmap='gray')
+    _, ax1 = plt.subplots()
+    ax1.imshow(b, cmap='gray')
 
-    grown = region_growing(grays[1], binary)
-    fig2, ax2 = plt.subplots()
-    ax2.imshow(b, cmap='gray')
+    grown_b = region_growing(gs[1], b)
+    _, ax2 = plt.subplots()
+    ax2.imshow(grown_b, cmap='gray')
 
-    # for box in f2[2]:
-    #   rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-    #   ax.add_patch(rect)
+    for box in f2[2]:
+      ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+      ax2.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
 
     plt.show(block=True)
     break
