@@ -50,11 +50,11 @@ def is_intersecting(box1, box2):
     if box1[0] > box2[0] + box2[2]:
         return False  # box1 is right of box2
     if box2[0] > box1[0] + box1[2]:
-        return False  # box1 is left of box2
+        return False  # box2 is right of box1
     if box1[1] > box2[1] + box2[3]:
         return False  # box1 is below box2
     if box2[1] > box1[1] + box1[3]:
-        return False  # box1 is above box2
+        return False  # box2 is below box1
     return True
 
 
