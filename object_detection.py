@@ -18,6 +18,7 @@ def objects(grays):
   height, width = grays[1].shape
   binary = np.zeros((height, width), dtype=np.uint8)
   
+  # misses the interval between the last multiple of 30 and the width and height
   for i in range(0, height, 30):
     for j in range(0, width, 30):  
       g1_region = g1[i:i+30, j:j+30]
@@ -72,9 +73,9 @@ def region_growing(gray, binary):
     if not sd: continue
 
     t1 = norm.ppf(5e-3, loc=mean, scale=sd)
-    t2 = norm.ppf(1-5e-3, loc=mean, scale=sd) # 2 * mean - t1
+    t2 = 2 * mean - t1
 
-    binary[l:r, b:t] = np.logical_and(gray_region > t1, gray_region < t2)
+    binary[l:r, b:t] = np.logical_or(np.logical_and(gray_region > t1, gray_region < t2), binary[l:r, b:t])
 
   return binary
       
@@ -87,7 +88,7 @@ if __name__ == '__main__':
   print(f'{dataset_path}/car/001')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   frames = list(dataloader.preloaded_frames.values())
-  i0 = 10
+  i0 = 1
   
   for i in range(i0, len(frames) - i0):
     f1 = frames[i - i0]
@@ -98,16 +99,18 @@ if __name__ == '__main__':
     # plt.imshow(f2[1], cmap='gray')
 
     b = objects(gs)
-    # plt.figure()
-    # plt.imshow(b, cmap='gray')
+    fig, ax = plt.subplots()
+    plt.imshow(b, cmap='gray')
 
     b = region_growing(gs[1], b)
     fig2, ax2 = plt.subplots()
     ax2.imshow(b, cmap='gray')
 
-    for box in f2[2]:
-      rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-      ax2.add_patch(rect)
+    # for box in f2[2]:
+    #   rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+    #   rect2 = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+    #   ax.add_patch(rect)
+    #   ax2.add_patch(rect2)
 
     plt.show(block=True)
     break
