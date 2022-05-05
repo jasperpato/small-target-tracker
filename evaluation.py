@@ -58,7 +58,7 @@ def is_intersecting(box1, box2):
     return True
 
 
-def intersection_over_union(box1, box2) -> float:
+def intersection_over_union(box1, box2):
     """
     Calculate the intersection over union (IOU) of two boxes.
     Boxes are in the format [tl_x, tl_y, width, height]
