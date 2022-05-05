@@ -1,4 +1,4 @@
-import os, sys
+import sys
 from copy import deepcopy
 import math
 import numpy as np
@@ -7,6 +7,7 @@ from dataparser import Dataloader
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from skimage import measure, color
+
 
 def objects(grays):
   '''
@@ -50,38 +51,35 @@ def region_growing(gray, binary):
 
   for blob in blobs:
     blob_rows, blob_cols = zip(*blob.coords)
+    ctr_row, ctr_col = int(blob.centroid[0]), int(blob.centroid[1])
+    blob_grays = gray[blob_rows, blob_cols]
+    mean = np.mean(blob_grays)
+    sd = np.std(blob_grays)
 
-    if len(blob.coords) < 2:
+    if len(blob.coords) == 1:
       binary[blob_rows, blob_cols] = 0
+    if not sd:
       continue
-
-    ctr_row, ctr_col = blob.centroid
-    ctr_row, ctr_col = int(ctr_row), int(ctr_col)
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
-    r = ctr_col + 5 if ctr_col + 5 < width else width
-    t = ctr_row - 5 if ctr_row - 5 >= 0 else 0
-    b = ctr_row + 5 if ctr_row + 5 < height else height
-
+    r = ctr_col + 6 if ctr_col + 5 < width else width
+    b = ctr_row - 5 if ctr_row - 5 >= 0 else 0
+    t = ctr_row + 6 if ctr_row + 5 < height else height
     gray_region = gray[b:t, l:r]
-    blob_grays = gray[blob_rows, blob_cols]
-      
-    mean = np.mean(blob_grays)
-    sd = np.std(blob_grays)
-    if not sd: continue
 
     t1 = norm.ppf(5e-3, loc=mean, scale=sd)
     t2 = 2 * mean - t1
-    binary[b:t, l:r] = np.logical_or(np.logical_and(gray_region > t1, gray_region < t2), binary[b:t, l:r])
-
+    binary[b:t, l:r] = np.logical_or(
+      np.logical_and(gray_region > t1, gray_region < t2), binary[b:t, l:r])
+    
   return binary
       
 
 if __name__ == '__main__':
 
-  dataset_path = sys.argv[1].rstrip('/')
-  # dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
+  # dataset_path = sys.argv[1].rstrip('/')
+  dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
 
   # TESTING
   print(f'{dataset_path}/car/001')
@@ -95,7 +93,7 @@ if __name__ == '__main__':
     f3 = frames[i + i0]
   
     gs = (color.rgb2gray(f1[1]), color.rgb2gray(f2[1]), color.rgb2gray(f3[1]))
-    # plt.imshow(f2[1], cmap='gray')
+    plt.imshow(f2[1], cmap='gray')
 
     b = objects(gs)
     fig, ax = plt.subplots()
@@ -105,11 +103,9 @@ if __name__ == '__main__':
     fig2, ax2 = plt.subplots()
     ax2.imshow(b, cmap='gray')
 
-    for box in f2[2]:
-      rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-      rect2 = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
-      ax.add_patch(rect)
-      ax2.add_patch(rect2)
+    # for box in f2[2]:
+    #   rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none')
+    #   ax.add_patch(rect)
 
     plt.show(block=True)
     break
