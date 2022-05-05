@@ -10,7 +10,7 @@ from skimage import measure, color
 from dataparser import Dataloader
 from object_detection import objects, region_growing
 
-g
+
 def plot_morph_cues(binary, gt):
   '''
   Plot morphological features for true positives and false positives
