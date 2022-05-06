@@ -8,7 +8,7 @@ import regex as re
 import pandas as pd
 import matplotlib.pyplot as plt
 
-RAM_LIMIT = 90 # maximam RAM usage percentage allowed
+RAM_LIMIT = 90 # stop loading when RAM reaches this percentage usage
 
 
 def read_img(frame_no, img_path, gt_df):
@@ -83,11 +83,6 @@ if __name__ == '__main__':
     # TESTING
     dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
     frames = list(dataloader.preloaded_frames.values())[:3]
-    
-    # b = objects(frames)
-    # plt.imshow(b)
-
-    # plt.show(block=True)
     
     
     

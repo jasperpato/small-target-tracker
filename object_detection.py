@@ -84,8 +84,10 @@ if __name__ == '__main__':
   # dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
 
   # TESTING
-  dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-  frames = list(dataloader.preloaded_frames.values())
+  loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  frames = list(loader.preloaded_frames.values())
+  print(frames)
+  if len(frames) < 3: frames = [loader(i) for i in range(50)]
   i0 = 10
   
   for i in range(i0, len(frames) - i0):
