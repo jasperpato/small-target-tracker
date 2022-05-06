@@ -1,10 +1,12 @@
-import os, sys
-from copy import deepcopy
+import sys
 import math
 import numpy as np
-from scipy.stats import norm
-from dataparser import Dataloader
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from copy import deepcopy
+from scipy.stats import norm
+from scipy import signal
+from dataparser import Dataloader
 from skimage import measure, color
 
 
@@ -15,17 +17,28 @@ def objects(grays):
   1s are candidate moving objects.
   '''
   g1, g2, g3 = grays
-  # difference
-  dif1, dif2 = np.abs(g1-g2), np.abs(g2-g3)
-  # mean
-  m1, m2 = np.mean(dif1), np.mean(dif2)
-  # threshold
-  th1, th2 = -math.log(0.05) * m1, -math.log(0.05) * m2
-  # mask
-  b1, b2 = dif1 > th1, dif2 > th2
-  # intersection
-  return np.array(np.logical_and(b1, b2), dtype=np.uint8)
-
+  height, width = grays[1].shape
+  binary = np.zeros((height, width), dtype=np.uint8)
+  
+  # misses the interval between the last multiple of 30 and the width and height
+  for i in range(0, height, 30):
+    for j in range(0, width, 30):  
+      g1_region = g1[i:i+30, j:j+30]
+      g2_region = g2[i:i+30, j:j+30]
+      g3_region = g3[i:i+30, j:j+30]
+      
+      # difference
+      dif1, dif2 = np.abs(g1_region - g2_region), np.abs(g2_region - g3_region)
+      # mean
+      m1, m2 = np.mean(dif1), np.mean(dif2)
+      # threshold
+      th1, th2 = -math.log(0.05) * m1, -math.log(0.05) * m2
+      # mask
+      b1, b2 = dif1 > th1, dif2 > th2
+      # intersection
+      binary[i:i+30, j:j+30] = np.logical_and(b1, b2)
+  
+  return binary
 
 
 def region_growing(gray, binary):
@@ -34,46 +47,65 @@ def region_growing(gray, binary):
   '''
   binary = deepcopy(binary)
   height, width = gray.shape
-  labeled_image = measure.label(binary, background=0)
+  labeled_image = measure.label(binary, background=0, connectivity=2)
   blobs = measure.regionprops(labeled_image)
-  
+
   for blob in blobs:
-    ctr_row, ctr_col = blob.centroid
-    ctr_row, ctr_col = int(ctr_row), int(ctr_col)
-    if ctr_row - 5 >= 0 and ctr_row + 5 < height and ctr_col - 5 >= 0 and ctr_col + 5 < width: 
-      gray_region = gray[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6]
-      
-      mean = np.mean(gray_region)
-      sd = np.std(gray_region)
-      t1 = norm.ppf(0.20, loc=mean, scale=sd)
-      t2 = norm.ppf(0.80, loc=mean, scale=sd)
-      
-      new_objects = np.logical_and(gray_region > t1, gray_region < t2)
-      binary_region = binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6]
-      new_bin_region = np.logical_or(new_objects, binary_region)
-      binary[ctr_row - 5:ctr_row + 6, ctr_col - 5:ctr_col + 6] = new_bin_region
+    blob_rows, blob_cols = zip(*blob.coords)
+    ctr_row, ctr_col = int(blob.centroid[0]), int(blob.centroid[1])
+    blob_grays = gray[blob_rows, blob_cols]
+    mean = np.mean(blob_grays)
+    sd = np.std(blob_grays)
 
+    if len(blob.coords) < 3:
+      binary[blob_rows, blob_cols] = 0
+      continue
+      
+    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
+    t2 = 2 * mean - t1  
+    if t2 - t1 > 0.15: continue
+    
+    # 11 x 11 box bounds
+    l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
+    r = ctr_col + 6 if ctr_col + 5 < width else width
+    b = ctr_row - 5 if ctr_row - 5 >= 0 else 0
+    t = ctr_row + 6 if ctr_row + 5 < height else height
+    
+    gray_region = gray[b:t, l:r]
+    candidates = np.logical_and(gray_region > t1, gray_region < t2)
+    binary[b:t, l:r] = np.logical_or(candidates, binary[b:t, l:r])
+    
   return binary
+    
       
-
 if __name__ == '__main__':
 
-  dataset_path = sys.argv[1].strip('/')
+  dataset_path = sys.argv[1].rstrip('/')
+  # dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
 
   # TESTING
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  frames = list(dataloader.preloaded_frames.values())
+  i0 = 10
   
-  frames = list(dataloader.preloaded_frames.values())[:3]
-  
-  gs = [color.rgb2gray(img) for _, img, _ in frames]
-  plt.imshow(gs[1], cmap='gray')
+  for i in range(i0, len(frames) - i0):
+    f1, f2, f3 = frames[i - i0], frames[i], frames[i + i0]
+    gs = (color.rgb2gray(f1[1]), color.rgb2gray(f2[1]), color.rgb2gray(f3[1]))
+    
+    plt.figure()
+    plt.imshow(gs[1], cmap='gray')
 
-  b = objects(gs)
-  plt.figure()
-  plt.imshow(b, cmap='gray')
+    b = objects(gs)
+    _, ax1 = plt.subplots()
+    ax1.imshow(b, cmap='gray')
 
-  b = region_growing(gs[1], b)
-  plt.figure()
-  plt.imshow(b, cmap='gray')
+    grown_b = region_growing(gs[1], b)
+    _, ax2 = plt.subplots()
+    ax2.imshow(grown_b, cmap='gray')
 
-  plt.show(block=True)
+    for box in f2[2]:
+      ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+      ax2.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+
+    plt.show(block=True)
+    break
