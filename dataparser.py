@@ -46,7 +46,7 @@ class Dataloader(object):
         while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no < end_frame:
             if frame_no in self.frame_paths:
                 img_path = self.frame_paths[frame_no]
-                return read_img(frame_no, img_path, self.gt_df)
+                self.preloaded_frames[frame_no] = read_img(frame_no, img_path, self.gt_df)
             frame_no += 1
     
     

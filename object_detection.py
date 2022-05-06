@@ -85,29 +85,28 @@ if __name__ == '__main__':
 
   # TESTING
   loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-  frames = list(loader.preloaded_frames.values())
-  print(frames)
-  if len(frames) < 3: frames = [loader(i) for i in range(50)]
+  preloaded_frames = list(loader.preloaded_frames.values())
   i0 = 10
   
-  for i in range(i0, len(frames) - i0):
-    f1, f2, f3 = frames[i - i0], frames[i], frames[i + i0]
-    gs = (color.rgb2gray(f1[1]), color.rgb2gray(f2[1]), color.rgb2gray(f3[1]))
+  for i in range(i0, len(preloaded_frames) - i0):
+    frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
+    grays = [color.rgb2gray(f[1]) for f in frames]
     
     plt.figure()
-    plt.imshow(gs[1], cmap='gray')
+    plt.imshow(grays[1], cmap='gray')
 
-    b = objects(gs)
+    b = objects(grays)
     _, ax1 = plt.subplots()
     ax1.imshow(b, cmap='gray')
 
-    grown_b = region_growing(gs[1], b)
+    grown = region_growing(grays[1], b)
     _, ax2 = plt.subplots()
-    ax2.imshow(grown_b, cmap='gray')
+    ax2.imshow(grown, cmap='gray')
 
-    for box in f2[2]:
-      ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
-      ax2.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+    if len(sys.argv) > 2 and sys.argv[2] == '--boxes':
+      for box in frames[2][2]:
+        ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+        ax2.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
 
     plt.show(block=True)
     break
