@@ -10,6 +10,11 @@ from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 import pyqtgraph as pg
 
+running_window = []
+'''
+Launch the gui.py and click on load image to choose file path.
+Select where the mot/car/001 file is.
+'''
 class Control(QWidget):
     def __init__(self, parent = None):
         super(Control, self).__init__(parent)
@@ -26,36 +31,81 @@ class Control(QWidget):
         self.message1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.grid.addWidget(self.message1)
 
-        self.message2 = QLabel("Parameter 1",self)
-        self.textbox = QLineEdit('20',self)
+        self.message2 = QLabel("Area",self)
+        self.Alow = QLineEdit('20',self)
+        self.Ahigh = QLineEdit('20',self)
         self.message2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.textbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message2)
-        self.grid.addWidget(self.textbox)
+        self.Alow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.Ahigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.grid.addWidget(self.message2, 1, 0)
+        self.grid.addWidget(self.Alow, 2,0)
+        self.grid.addWidget(QLabel("< area <", self), 2,1)
+        self.grid.addWidget(self.Ahigh, 2,2)
 
-        self.message3 = QLabel("Parameter 2",self)
-        self.textbox2 = QLineEdit('20',self)
+        self.message3 = QLabel("Extent",self)
+        self.Elow = QLineEdit('20',self)
+        self.Ehigh = QLineEdit('20',self)
         self.message3.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.textbox2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message3)
-        self.grid.addWidget(self.textbox2)
+        self.Elow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.Ehigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.grid.addWidget(self.message3, 3, 0)
+        self.grid.addWidget(self.Elow, 4,0)
+        self.grid.addWidget(QLabel("< extent <", self), 4,1)
+        self.grid.addWidget(self.Ehigh, 4,2)
+
+        self.message4 = QLabel("Major Axis",self)
+        self.Mlow = QLineEdit('20',self)
+        self.Mhigh = QLineEdit('20',self)
+        self.message4.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.Mlow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.Mhigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.grid.addWidget(self.message4, 5, 0)
+        self.grid.addWidget(self.Mlow, 6,0)
+        self.grid.addWidget(QLabel("< major axis <", self), 6,1)
+        self.grid.addWidget(self.Mhigh, 6,2)
+
+        self.message5 = QLabel("Eccentricity",self)
+        self.Eclow = QLineEdit('20',self)
+        self.Echigh = QLineEdit('20',self)
+        self.message5.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.Eclow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.Echigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.grid.addWidget(self.message5, 7, 0)
+        self.grid.addWidget(self.Eclow, 8,0)
+        self.grid.addWidget(QLabel("< eccentricity <", self), 8,1)
+        self.grid.addWidget(self.Echigh, 8,2)
 
         # Button to load image
         self.button1 = QPushButton('Load Image Frames',self)
         self.button1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.button1, *(10,0))
+        self.grid.addWidget(self.button1, 9,0)
+
+        # Button to close all windows
+        self.button2 = QPushButton('Close Windows',self)
+        self.button2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.grid.addWidget(self.button2, 9,2)
 
         # Button interactions
         self.button1.clicked.connect(self.load)
+        self.button2.clicked.connect(self.closeall)
 
     def load(self):
         self.dialog1 = Slideshow(self)
 
+    def closeall(self):
+        global running_window
+        for i in running_window:
+            i.close()
+        running_window = []
+
 class Slideshow(QMainWindow):
     def __init__(self, parent = None):
         super(Slideshow, self).__init__(parent)
+        global running_window
         self.setWindowTitle("Small Target Tracker")
         self.setGeometry(100,100, 800,800)
+
+        running_window.append(self)
 
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
@@ -100,9 +150,11 @@ class Slideshow(QMainWindow):
 
         self.timerEvent()
 
-    def graphData(self):
-        pen = pg.mkPen(width = 10)
-        self.graphWidget = pg.PlotWidget()
+    def graphObjectDetected(self):
+        global running_window
+
+        pen = pg.mkPen(width = 5)
+        self.graphWidget = pg.plot()
         self.graphWidget.show()
         seconds = [i for i in range(1, len(self.num_object)+1)]
         objects = self.num_object
@@ -111,12 +163,35 @@ class Slideshow(QMainWindow):
         self.graphWidget.setTitle("Moving objects per frame", size = "20pt")
         self.graphWidget.setLabel('left', 'Average Moving Object (per frame)')
         self.graphWidget.setLabel('bottom', 'Seconds (s)')
+
+        running_window.append(self.graphWidget)
+    
+    def graphScores(self):
+        global running_window
+
+        pen1 = pg.mkPen('r',width = 5)
+        pen2 = pg.mkPen('g',width = 5)
+        self.graphWidget = pg.plot()
+        self.graphWidget.addLegend()
+        self.graphWidget.show()
+        seconds = [1,2,3]
+        precision = [1.1,2.1,3.3]
+        recall = [2,3,4]
+
+        self.graphWidget.plot(seconds, precision, pen=pen1, name = 'precision')
+        self.graphWidget.plot(seconds, recall, pen=pen2, name = 'recall')
+        self.graphWidget.setTitle("Precision and Recall score", size = "20pt")
+        self.graphWidget.setLabel('left', 'Score')
+        self.graphWidget.setLabel('bottom', 'Seconds (s)')
+
+        running_window.append(self.graphWidget)
     
     def timerEvent(self, e=None):
         if self.step >= len(self.img):
             self.timer.stop()
             self.step = 0
-            self.graphData()
+            self.graphObjectDetected()
+            self.graphScores()
             self.dialog2 = Statistics(self)
             self.dialog2.show()
             self.painterInstance.end()
@@ -129,11 +204,13 @@ class Slideshow(QMainWindow):
 class Statistics(QMainWindow):
     def __init__(self, parent = None):
         super(Statistics, self).__init__(parent)
+        global running_window
         self.setWindowTitle("Small Target Tracker")
         self.setGeometry(0,0, 300, 210)
         self.initUI()
         self.show()
-    
+        running_window.append(self)
+        
     def initUI(self):
         self.title = QLabel("<h3>Statistics</h3>",self)
         self.title.move(110, 10)
