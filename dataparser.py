@@ -2,11 +2,11 @@ from glob import glob
 from pathlib import Path
 from skimage import io
 import sys
-import cv2
+# import cv2
 import psutil
 import regex as re
 import pandas as pd
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 RAM_LIMIT = 90 # stop loading when RAM reaches this percentage usage
 

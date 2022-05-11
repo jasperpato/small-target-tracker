@@ -56,6 +56,8 @@ def region_growing(gray, binary):
     blob_grays = gray[blob_rows, blob_cols]
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
+    
+    if not sd: continue
 
     if len(blob.coords) < 3:
       binary[blob_rows, blob_cols] = 0
@@ -63,7 +65,7 @@ def region_growing(gray, binary):
       
     t1 = norm.ppf(5e-3, loc=mean, scale=sd)
     t2 = 2 * mean - t1  
-    if t2 - t1 > 0.15: continue
+    if t2 - t1 > 0.2: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
@@ -80,7 +82,8 @@ def region_growing(gray, binary):
       
 if __name__ == '__main__':
 
-  dataset_path = sys.argv[1].rstrip('/')
+  index = 1 if len(sys.argv) == 2 else 2
+  dataset_path = sys.argv[index].rstrip('/')
   # dataset_path = '/home/allenator/UWA/fourth_year/CITS4402/VISO/mot'
 
   # TESTING
@@ -103,8 +106,8 @@ if __name__ == '__main__':
     _, ax2 = plt.subplots()
     ax2.imshow(grown, cmap='gray')
 
-    if len(sys.argv) > 2 and sys.argv[2] == '--boxes':
-      for box in frames[2][2]:
+    if sys.argv[1] == '--boxes':
+      for box in frames[1][2]:
         ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
         ax2.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
 
