@@ -38,7 +38,7 @@ def plot_morph_cues(binary, gt):
       in_l = max(l, bbox[1])
       in_r = min(l+w, bbox[3])
       in_area = (in_t - in_b) * (in_r - in_l)
-      iou = in_area / (h * w + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
+      iou = in_area / (h * w + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) - in_area)
 
       iou2 = intersection_over_union(g, (bbox[1], bbox[0], bbox[3]-bbox[1], bbox[2]-bbox[0]))
       # if iou > max_iou: max_iou = iou
