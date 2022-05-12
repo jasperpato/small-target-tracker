@@ -1,67 +1,64 @@
 import numpy as np
-from filterpy.kalman import KalmanFilter
-from object_detection import objects, region_growing
-from dataparser import Dataloader
-import sys
-from skimage import measure, color
 
 """
-Kalman filter taken from:
-       https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html
-
-Takes the x and y centroid coordinate of an object in a frame
-Returns a kalmanfilter model that can update and predict movement
+Class to initialise a Kalman Filter class with the necessary vectors
 """
-def createFilter(x,y,var):
-    """
-    All array dimensions and values are based on project PDF
-    var needs to be chosen and specified 
-    """
-    f = KalmanFilter(dim_x = 6, dim_z = 2)
+class KF:
+    def __init__(self, init_x, init_y, covar) -> None:
+        # Initial mean vector of the state vector. Format : [x, y, v of x, v of y, a of x, a of y]
+        self.x = np.array([init_x,init_y,0,0,0,0])
 
-    f.x = np.array ([[x],[y],[0],[0],[0],[0]])
+        # Motion correspondence
+        self.F = np.array ([[1.,0.,1.,0.,0.5,0.],
+                            [0.,1.,0.,1.,0.,0.5],
+                            [0.,0.,1.,0.,1.,0.],
+                            [0.,0.,0.,1.,0.,1.],
+                            [0.,0.,0.,0.,1.,0.],
+                            [0.,0.,0.,0.,0.,1.]])
+        
+        # Observation correspondence
+        self.H = np.array ([[1.,0.,0.,0.,0.,0.],
+                            [0.,1.,0.,0.,0.,0.]])
+        
+        # Covariance of motion model
+        self.Q = covar * np.eye(6, dtype=float)
 
-    f.F = np.array ([[1,0,1,0,0.5,0],
-                        [0,1,0,1,0,0.5],
-                        [0,0,1,0,1,0],
-                        [0,0,0,1,0,1],
-                        [0,0,0,0,1,0],
-                        [0,0,0,0,0,1]])
+        # Covariance of observation model
+        self.R = covar * np.eye(2,dtype=float)
 
-    f.H = np.array ([[1,0,0,0,0,0],
-                    [0,1,0,0,0,0]])
-
-    f.Q = np.array ([[var,0,0,0,0,0],
-                    [0,var,0,0,0,0],
-                    [0,0,var,0,0,0],
-                    [0,0,0,var,0,0],
-                    [0,0,0,0,var,0],
-                    [0,0,0,0,0,var]])
-
-    f.R = np.array ([[var,0],[0,var]])
-    f.P = f.Q
-
-    return f
-
-
-if __name__ == '__main__':
-    dataset_path = sys.argv[1].rstrip('/')
-
-    # TESTING by using gtdata of an assumed first object
-    loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-
-    first = True
-    for frame, img, gtdata in loader:
-        if first:
-            first = False
-            for e in gtdata:
-                f = createFilter(e[0],e[1],1000)
-                break
-            print(f.x) # Print initial object state
-        else:
-            for e in gtdata:
-                f.predict()
-                f.update(np.array([e[0],e[1]]))
-                break
+        # Initial state of P is Q
+        self.P = self.Q
     
-    print(f.x) # Print final object state
+    """
+    Predict assumes the change in time is 1 second
+    """
+    def predict(self):
+        self.x = self.F.dot(self.x)
+        self.P = self.F.dot(self.P).dot(self.F.T) + self.Q
+
+    def update(self, meas_x, meas_y):
+        z = np.array([meas_x, meas_y])
+
+        # Innovation calculation
+        y = z - self.H.dot(self.x)
+
+        # Innovation covariance calculation
+        S = self.H.dot(self.P).dot(self.H.T) + self.R 
+        
+        # Kalman Gain
+        K = self.P.dot(self.H.T).dot(np.linalg.inv(S))
+
+        self.x = self.x + K.dot(y)
+        self.P = (np.eye(6,dtype=float) - K.dot(self.H)).dot(self.P)
+
+#Test to see if state vector and P are updated correctly
+if __name__ == '__main__':
+    f = KF(0.0, 0.0,0.001)
+    print(f.x)
+    print(f.P)
+    f.predict()
+    print(f.x)
+    print(f.P)
+    f.update(1.0, 0.0)
+    print(f.x)
+    print(f.P)
