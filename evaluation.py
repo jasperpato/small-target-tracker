@@ -72,7 +72,5 @@ def intersection_over_union(box1, box2):
     if is_intersecting(box1, box2):
         intersection = (xbr - xtl) * (ybr - ytl)
         union = box1[2] * box1[3] + box2[2] * box2[3] - intersection
-        iou = max(intersection / union, 0)
-    else:
-        iou = 0.0
-    return iou
+        return max(intersection / union, 0)
+    return 0.0

@@ -31,22 +31,20 @@ def plot_morph_cues(binary, gt):
     # find closest bounding box 
     max_iou = 0
     for g in gt:
-      l, t, w, h = g
-      # compute intersection
-      in_b = max(t-h, bbox[0])
-      in_t = min(t, bbox[2])
-      in_l = max(l, bbox[1])
-      in_r = min(l+w, bbox[3])
-      in_area = (in_t - in_b) * (in_r - in_l)
-      iou = in_area / (h * w + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) - in_area)
+      # l, t, w, h = g
+      # # compute intersection
+      # in_b = max(t-h, bbox[0])
+      # in_t = min(t, bbox[2])
+      # in_l = max(l, bbox[1])
+      # in_r = min(l+w, bbox[3])
+      # in_area = (in_t - in_b) * (in_r - in_l)
+      # iou = in_area / (h * w + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) - in_area)
 
-      iou2 = intersection_over_union(g, (bbox[1], bbox[0], bbox[3]-bbox[1], bbox[2]-bbox[0]))
-      if iou2 > max_iou: max_iou = iou2
+      iou = intersection_over_union(g, (bbox[1], bbox[0], bbox[3]-bbox[1], bbox[2]-bbox[0]))
+      if iou > max_iou: max_iou = iou
 
-    if max_iou > 0.5: print(max_iou)
-
-    # false positive
-    if max_iou < 0.7: pass
+    if max_iou > 0.7:
+      print(f'bbox {bbox} area {area} extent {extent:0.2f} a_len {a_len:0.2f} ecc {ecc:0.2f} iou {max_iou:0.2f}')
 
 
 
