@@ -12,7 +12,7 @@ from object_detection import objects, region_growing
 from evaluation import intersection_over_union
 
 
-def plot_morph_cues(binary, gt):
+def plot_morph_cues(binary, gt, ax):
   '''
   Plot morphological features for true positives and false positives
   gt list of ground truths bounding box data
@@ -43,7 +43,8 @@ def plot_morph_cues(binary, gt):
       iou = intersection_over_union(g, (bbox[1], bbox[0], bbox[3]-bbox[1], bbox[2]-bbox[0]))
       if iou > max_iou: max_iou = iou
 
-    if max_iou > 0.7:
+    if max_iou > 0.5:
+      ax.add_patch(patches.Rectangle((bbox[1], bbox[0]), bbox[3]-bbox[1], bbox[2]-bbox[0], linewidth=1, edgecolor='b', facecolor='none'))
       print(f'bbox {bbox} area {area} extent {extent:0.2f} a_len {a_len:0.2f} ecc {ecc:0.2f} iou {max_iou:0.2f}')
 
 
@@ -61,5 +62,10 @@ if __name__ == '__main__':
   binary = objects(grays)
   grown = region_growing(grays[1], binary)
 
-  plot_morph_cues(grown, frames[i0][2])
-  
+  fig, ax = plt.subplots()
+  ax.imshow(grown, cmap='gray')
+
+  plot_morph_cues(grown, frames[i0][2], ax)
+  for box in imgs[1][2]:
+    ax.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+  plt.show(block=True)
