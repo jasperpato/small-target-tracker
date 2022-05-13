@@ -41,9 +41,9 @@ def plot_morph_cues(binary, gt):
       iou = in_area / (h * w + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) - in_area)
 
       iou2 = intersection_over_union(g, (bbox[1], bbox[0], bbox[3]-bbox[1], bbox[2]-bbox[0]))
-      # if iou > max_iou: max_iou = iou
+      if iou2 > max_iou: max_iou = iou2
 
-      print(iou, iou2)
+    if max_iou > 0.5: print(max_iou)
 
     # false positive
     if max_iou < 0.7: pass
