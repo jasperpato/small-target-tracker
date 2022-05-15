@@ -9,44 +9,42 @@ from skimage import measure, color
 
 from dataparser import Dataloader
 from object_detection import objects, region_growing
-from evaluation import intersection_over_union
+from evaluation import intersection_over_union, Box
 
 
-def plot_morph_cues(binary, gt, ax):
+def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.5):
   '''
   Plot morphological features for true positives and false positives
   gt list of ground truths bounding box data
   '''
   binary = deepcopy(binary)
-  labeled_image = measure.label(binary, background=0)
+  labeled_image = measure.label(binary, background=0, connectivity=1)
   blobs = measure.regionprops(labeled_image)
+  
+  npos = len(gt_boxes)
+  seen_gts = np.zeros(npos)
+  tp_areas = []
+  tp_extents = []
+  tp_a_lengths = []
+  tp_eccentricities = []
 
   for blob in blobs:
-    area = blob.area_filled
-    extent = area / blob.area_bbox
-    a_len = blob.axis_major_length
-    ecc = blob.eccentricity
     bbox = blob.bbox
-
-    # find closest bounding box 
-    max_iou = 0
-    for g in gt:
-      # l, t, w, h = g
-      # # compute intersection
-      # in_b = max(t-h, bbox[0])
-      # in_t = min(t, bbox[2])
-      # in_l = max(l, bbox[1])
-      # in_r = min(l+w, bbox[3])
-      # in_area = (in_t - in_b) * (in_r - in_l)
-      # iou = in_area / (h * w + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) - in_area)
-
-      iou = intersection_over_union(g, (bbox[1], bbox[0], bbox[3]-bbox[1], bbox[2]-bbox[0]))
-      if iou > max_iou: max_iou = iou
-
-    if max_iou > 0.5:
+    
+    max_iou = 0.0
+    for i in range(npos):
+      iou = intersection_over_union(Box(bbox), Box(gt_boxes[i]))
+      if iou > max_iou:
+        max_iou = iou
+        gt_idx = i  # index of the ground truth box with the highest IoU
+    
+    if max_iou >= iou_threshold and seen_gts[gt_idx] == 0:
+      seen_gts[gt_idx] = 1    # mark as detected
+      tp_areas.append(blob.area_filled)
+      tp_extents.append(blob.area_filled / blob.area_bbox)
+      tp_a_lengths.append(blob.axis_major_length)
+      tp_eccentricities.append(blob.eccentricity)
       ax.add_patch(patches.Rectangle((bbox[1], bbox[0]), bbox[3]-bbox[1], bbox[2]-bbox[0], linewidth=1, edgecolor='b', facecolor='none'))
-      print(f'bbox {bbox} area {area} extent {extent:0.2f} a_len {a_len:0.2f} ecc {ecc:0.2f} iou {max_iou:0.2f}')
-
 
 
 if __name__ == '__main__':
