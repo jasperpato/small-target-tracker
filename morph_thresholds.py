@@ -12,11 +12,12 @@ from object_detection import objects, region_growing
 from evaluation import intersection_over_union, Box
 
 
-def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.4):
+def morph_cues(binary, gt_boxes, iou_threshold=0.5):
   '''
   Plot morphological features for true positives and false positives
   gt list of ground truths bounding box data
   '''
+
   binary = deepcopy(binary)
   labeled_image = measure.label(binary, background=0, connectivity=1)
   blobs = measure.regionprops(labeled_image)
@@ -73,5 +74,5 @@ if __name__ == '__main__':
                                    box[2], box[3], linewidth=1,
                                    edgecolor='y', facecolor='none'))
 
-  plot_morph_cues(grown, imgs[1][2], ax)
+  morph_cues(grown, imgs[1][2], ax)
   plt.show(block=True)
