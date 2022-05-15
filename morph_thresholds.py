@@ -17,6 +17,7 @@ def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.5):
   Plot morphological features for true positives and false positives
   gt list of ground truths bounding box data
   '''
+
   binary = deepcopy(binary)
   labeled_image = measure.label(binary, background=0, connectivity=1)
   blobs = measure.regionprops(labeled_image)
@@ -29,11 +30,11 @@ def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.5):
   tp_eccentricities = []
 
   for blob in blobs:
-    bbox = blob.bbox
+    tl_x, tl_y, w, h = blob.bbox[1], blob.bbox[0], blob.bbox[2]-blob.bbox[0], blob.bbox[3]-blob.bbox[1]
     
     max_iou = 0.0
     for i in range(npos):
-      iou = intersection_over_union(Box(bbox), Box(gt_boxes[i]))
+      iou = intersection_over_union(Box(tl_x, tl_y, w, h), Box(*gt_boxes[i]))
       if iou > max_iou:
         max_iou = iou
         gt_idx = i  # index of the ground truth box with the highest IoU
@@ -44,7 +45,12 @@ def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.5):
       tp_extents.append(blob.area_filled / blob.area_bbox)
       tp_a_lengths.append(blob.axis_major_length)
       tp_eccentricities.append(blob.eccentricity)
-      ax.add_patch(patches.Rectangle((bbox[1], bbox[0]), bbox[3]-bbox[1], bbox[2]-bbox[0], linewidth=1, edgecolor='b', facecolor='none'))
+      ax.add_patch(patches.Rectangle((tl_x, tl_y), w, h, linewidth=1, edgecolor='b', facecolor='none'))
+
+  print(round(np.mean(tp_areas),2))
+  print(round(np.mean(tp_extents),2))
+  print(round(np.mean(tp_a_lengths),2))
+  print(round(np.mean(tp_eccentricities),2))
 
 
 if __name__ == '__main__':
