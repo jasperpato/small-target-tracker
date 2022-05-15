@@ -38,7 +38,7 @@ def intersection_over_union(box1: 'Box', box2: 'Box'):
     xbr = min(box1.xbr, box2.xbr)
     ybr = min(box1.ybr, box2.ybr)
     
-    if not Box.is_intersecting(box1, box2):
+    if not is_intersecting(box1, box2):
         return 0.0
 
     intersection = (xbr - xtl) * (ybr - ytl)
@@ -65,7 +65,7 @@ def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
     for pred in pred_bboxes:
         max_iou = 0.0
         for i in range(npos):
-            iou = Box.intersection_over_union(pred, gt_bboxes[i])
+            iou = intersection_over_union(pred, gt_bboxes[i])
             if iou > max_iou:
                 max_iou = iou
                 gt_idx = i  # index of the ground truth box with the highest IoU
