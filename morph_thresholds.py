@@ -12,7 +12,7 @@ from object_detection import objects, region_growing
 from evaluation import intersection_over_union, Box
 
 
-def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.5):
+def morph_cues(binary, gt_boxes, iou_threshold=0.5):
   '''
   Plot morphological features for true positives and false positives
   gt list of ground truths bounding box data
@@ -45,12 +45,14 @@ def plot_morph_cues(binary, gt_boxes, ax, iou_threshold=0.5):
       tp_extents.append(blob.area_filled / blob.area_bbox)
       tp_a_lengths.append(blob.axis_major_length)
       tp_eccentricities.append(blob.eccentricity)
-      ax.add_patch(patches.Rectangle((tl_x, tl_y), w, h, linewidth=1, edgecolor='b', facecolor='none'))
+      # ax.add_patch(patches.Rectangle((tl_x, tl_y), w, h, linewidth=1, edgecolor='b', facecolor='none'))
 
-  print(round(np.mean(tp_areas),2))
-  print(round(np.mean(tp_extents),2))
-  print(round(np.mean(tp_a_lengths),2))
-  print(round(np.mean(tp_eccentricities),2))
+  area_avg, area_sd = np.mean(tp_areas) if tp_areas else -1, np.std(tp_areas) if tp_areas else -1
+  ext_avg, ext_sd = np.mean(tp_extents) if tp_extents else -1, np.std(tp_extents) if tp_extents else -1
+  alen_avg, alen_sd = np.mean(tp_a_lengths) if tp_a_lengths else -1, np.std(tp_a_lengths) if tp_a_lengths else -1
+  ecc_avg, ecc_sd = np.mean(tp_eccentricities) if tp_eccentricities else -1, np.std(tp_eccentricities) if tp_eccentricities else -1
+
+  return len(tp_areas), area_avg, area_sd, ext_avg, ext_sd, alen_avg, alen_sd, ecc_avg, ecc_sd
 
 
 if __name__ == '__main__':
@@ -58,18 +60,15 @@ if __name__ == '__main__':
   dataset_path = sys.argv[1].rstrip('/')
   dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   frames = list(dataloader.preloaded_frames.values())
-  i0 = 5
+  print(len(frames))
+  step = 5
+
+  for i in range(0, len(frames)-2*step+1, step):
   
-  imgs = (frames[0], frames[i0], frames[2 * i0])
-  grays = [color.rgb2gray(i[1]) for i in imgs]
-    
-  binary = objects(grays)
-  grown = region_growing(grays[1], binary)
+    imgs = (frames[i], frames[i+step], frames[i+2*step])
+    grays = [color.rgb2gray(i[1]) for i in imgs]
+      
+    binary = objects(grays)
+    grown = region_growing(grays[1], binary)
 
-  fig, ax = plt.subplots()
-  ax.imshow(grown, cmap='gray')
-
-  plot_morph_cues(grown, frames[i0][2], ax)
-  for box in imgs[1][2]:
-    ax.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
-  plt.show(block=True)
+    print(i+step, list(np.round(morph_cues(grown, frames[step][2], 0.4),2)))
