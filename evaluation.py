@@ -1,17 +1,21 @@
 import numpy as np
 
 class Box:
+    """
+    Define a pixel-based bounding box with inclusive coordinates
+    """
     def __init__(self, xtl, ytl, w, h):
         self.xtl = xtl
         self.ytl = ytl
-        self.xbr = w + xtl
-        self.ybr = h + ytl
-        self.w = w
-        self.h = h
+        self.xbr = w + xtl - 1
+        self.ybr = h + ytl - 1
     
     @property    
     def area(self):
-        return (self.xbr - self.xtl) * (self.ybr - self.ytl)
+        return (self.xbr - self.xtl + 1) * (self.ybr - self.ytl + 1)
+    
+    def __repr__(self):
+        return f'({self.xtl},{self.ytl}), ({self.xbr},{self.ybr})'
     
     
 def is_intersecting(box1: 'Box', box2: 'Box'):
@@ -41,9 +45,11 @@ def intersection_over_union(box1: 'Box', box2: 'Box'):
     if not is_intersecting(box1, box2):
         return 0.0
 
-    intersection = (xbr - xtl) * (ybr - ytl)
+    intersection = (xbr - xtl + 1) * (ybr - ytl + 1)
     union = box1.area + box2.area - intersection
-    return max(intersection / union, 0)
+    iou = intersection / union
+    assert iou >= 0.0 and iou <= 1.0
+    return iou
     
     
 def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
