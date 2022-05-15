@@ -14,22 +14,24 @@ class Box:
         return (self.xbr - self.xtl) * (self.ybr - self.ytl)
     
     
-def is_intersecting(cls, box1: 'Box', box2: 'Box'):
+def is_intersecting(box1: 'Box', box2: 'Box'):
+    """
+    Check if two boxes intersect.
+    """
     if box1.xtl > box2.xbr:
         return False  # box1 is right of box2
     if box2.xtl > box1.xbr:
-        return False  # box1 is left of box2
-    if box1.ybr < box2.ytl:
-        return False  # box1 is above box2
+        return False  # box2 is right of box1
+    if box2.ytl > box1.ybr:
+        return False  # box2 is below box2
     if box1.ytl > box2.ybr:
         return False  # box1 is below box2
     return True
 
 
-def intersection_over_union(cls, box1: 'Box', box2: 'Box'):
+def intersection_over_union(box1: 'Box', box2: 'Box'):
     """
     Calculate the intersection over union (IOU) of two boxes.
-    Boxes are in the format [tl_x, tl_y, width, height]
     """
     xtl = max(box1.xtl, box2.xtl)
     ytl = max(box1.ytl, box2.ytl)
