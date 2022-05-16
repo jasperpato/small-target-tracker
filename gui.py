@@ -1,6 +1,10 @@
 import sys
 import time
+
 from dataparser import Dataloader
+from evaluation import evaluation_metrics
+from morph_thresholds import morph_cues
+from object_detection import objects, region_growing
 
 from os import listdir
 from os.path import isfile, join
@@ -112,7 +116,8 @@ class Slideshow(QMainWindow):
         self.pathname = QFileDialog.getExistingDirectory(self, "Select directory")
         
         if self.pathname:
-            self.data = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 100))
+            loader = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 10))
+            self.frames = list(loader.preloaded_frames.values())
             self.show()
         else:
             self.close()
@@ -125,9 +130,17 @@ class Slideshow(QMainWindow):
 
         self.num_object = []
         self.img = []
-        for frame, img, gtdata in self.data:
-            i = Image.fromarray(img, mode='RGB')
-            qt_img = ImageQt.ImageQt(i)
+
+        i0 = 10
+        for i in range(i0, len(preloaded_frames) - i0):
+            frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
+            grays = [color.rgb2gray(f[1]) for f in frames]
+
+            binary = objects(grays)
+            grown = region_growing(grays[1], binary)
+
+            img = Image.fromarray(grays[1], mode='L')
+            qt_img = ImageQt.ImageQt(img)
             
             image = QPixmap.fromImage(qt_img)
             
@@ -136,10 +149,10 @@ class Slideshow(QMainWindow):
             self.penRectangle.setWidth(3)
 
             self.num_object.append(len(gtdata))
-            for e in gtdata:
+            for box in frames[1][2]:
                 # draw rectangle on painter
                 self.painterInstance.setPen(self.penRectangle)
-                self.painterInstance.drawRect(e[0],e[1],e[2],e[3])
+                self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
 
             self.img.append(image)
         

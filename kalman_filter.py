@@ -4,7 +4,7 @@ import numpy as np
 Class to initialise a Kalman Filter class with the necessary vectors
 """
 class KF:
-    def __init__(self, init_x, init_y, covar) -> None:
+    def __init__(self, init_x, init_y, covar, hyp) -> None:
         # Initial mean vector of the state vector. Format : [x, y, v of x, v of y, a of x, a of y]
         self.x = np.array([init_x,init_y,0,0,0,0])
 
@@ -28,7 +28,7 @@ class KF:
 
         # Initial state of P is Q
         self.P = self.Q
-    
+        
     """
     Predict assumes the change in time is 1 second
     """
