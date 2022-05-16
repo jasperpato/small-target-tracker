@@ -47,28 +47,52 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
       tp_eccentricities.append(blob.eccentricity)
       # ax.add_patch(patches.Rectangle((tl_x, tl_y), w, h, linewidth=1, edgecolor='b', facecolor='none'))
 
-  area_avg, area_sd = np.mean(tp_areas) if tp_areas else -1, np.std(tp_areas) if tp_areas else -1
-  ext_avg, ext_sd = np.mean(tp_extents) if tp_extents else -1, np.std(tp_extents) if tp_extents else -1
-  alen_avg, alen_sd = np.mean(tp_a_lengths) if tp_a_lengths else -1, np.std(tp_a_lengths) if tp_a_lengths else -1
-  ecc_avg, ecc_sd = np.mean(tp_eccentricities) if tp_eccentricities else -1, np.std(tp_eccentricities) if tp_eccentricities else -1
+  area_avg, area_std = np.mean(tp_areas) if tp_areas else -1, np.std(tp_areas) if tp_areas else -1
+  ext_avg, ext_std = np.mean(tp_extents) if tp_extents else -1, np.std(tp_extents) if tp_extents else -1
+  alen_avg, alen_std = np.mean(tp_a_lengths) if tp_a_lengths else -1, np.std(tp_a_lengths) if tp_a_lengths else -1
+  ecc_avg, ecc_std = np.mean(tp_eccentricities) if tp_eccentricities else -1, np.std(tp_eccentricities) if tp_eccentricities else -1
 
-  return len(tp_areas), area_avg, area_sd, ext_avg, ext_sd, alen_avg, alen_sd, ecc_avg, ecc_sd
+  return len(tp_areas), area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std
 
 
 if __name__ == '__main__':
 
   dataset_path = sys.argv[1].rstrip('/')
-  dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-  frames = list(dataloader.preloaded_frames.values())
-  print(len(frames))
-  step = 5
+  num_folders = sys.argv[2]
+  num_frames = sys.argv[3]
 
-  for i in range(0, len(frames)-2*step+1, step):
-  
-    imgs = (frames[i], frames[i+step], frames[i+2*step])
-    grays = [color.rgb2gray(i[1]) for i in imgs]
-      
-    binary = objects(grays)
-    grown = region_growing(grays[1], binary)
+  area_avg, ext_avg, alen_avg, ecc_avg = 0, 0, 0, 0
+  area_std, ext_std, alen_std, ecc_std = 0, 0, 0, 0
+  total_cands = 0
 
-    print(i+step, list(np.round(morph_cues(grown, frames[step][2], 0.4),2)))
+  for j in range(1,num_folders+1):
+
+    dataloader = Dataloader(f'{dataset_path}/car/0{j:02}', img_file_pattern='*.jpg', frame_range=(1,num_frames))
+    frames = list(dataloader.preloaded_frames.values())
+    step = 5
+
+    for i in range(step-1, len(frames)-step+1, step):
+    
+      ns = (frames[i-step+1], frames[i], frames[i+step-1])
+      grays = [color.rgb2gray(i[1]) for i in ns]
+        
+      binary = objects(grays)
+      # grown = region_growing(grays[1], binary)
+
+      ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, frames[i][2], 0.4)
+
+      # cumulative average
+      area_avg = (area_avg * total_cands + ar_avg * ncands) / (total_cands + ncands)
+      ext_avg = (ext_avg * total_cands + ex_avg * ncands) / (total_cands + ncands)
+      alen_avg = (alen_avg * total_cands + al_avg * ncands) / (total_cands + ncands)
+      ecc_avg = (ecc_avg * total_cands + ec_avg * ncands) / (total_cands + ncands)
+
+      # cumulative sd
+      area_std = ((area_std ** 2 * total_cands + ar_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
+      ext_std = ((ext_std ** 2 * total_cands + ex_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
+      alen_std = ((alen_std ** 2 * total_cands + al_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
+      ecc_std = ((ecc_std ** 2 * total_cands + ec_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
+
+      total_cands += ncands
+
+  print(area_avg, ext_avg, alen_avg, ecc_avg)
