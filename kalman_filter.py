@@ -78,6 +78,8 @@ if __name__ == '__main__':
         if count == 0:
             f = KF(centroids[0].centroid[0], centroids[0].centroid[1], 0.001)
             print("Initial x : {:f}, Initial y : {:f}, Inital velocity : {:f}".format(f.x[0],f.x[1], (f.x[2]**2+f.x[3]**2)**0.5))
+            print("The P matrix : \n")
+            print(f.P)
         else:
             f.predict()
             f.update(centroids[0].centroid[0], centroids[0].centroid[1])
@@ -85,3 +87,5 @@ if __name__ == '__main__':
         count +=1
     
     print("Final x : {:f}, Final y : {:f}, Final velocity : {:f}".format(f.x[0],f.x[1], (f.x[2]**2+f.x[3]**2)**0.5))
+    print("The P matrix : \n")
+    print(f.P)
