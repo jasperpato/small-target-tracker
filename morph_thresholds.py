@@ -57,12 +57,7 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
   return len(tp_areas), area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std
 
 
-if __name__ == '__main__':
-
-  dataset_path = sys.argv[1].rstrip('/')
-  num_folders = int(sys.argv[2])
-  num_frames = int(sys.argv[3])
-
+def find_thresholds(dataset_path, num_folders, num_frames):
   area_avg, ext_avg, alen_avg, ecc_avg = 0, 0, 0, 0
   area_std, ext_std, alen_std, ecc_std = 0, 0, 0, 0
   total_cands = 0
@@ -97,4 +92,25 @@ if __name__ == '__main__':
 
       total_cands += ncands
 
-  print(area_avg, ext_avg, alen_avg, ecc_avg)
+  print(area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std)
+
+  with open('cue_results.txt', 'w') as f:
+    f.write(f'{num_folders}, {num_frames}, {area_avg}, {area_std}, {ext_avg}, {ext_std}, {alen_avg}, {alen_std}, {ecc_avg}, {ecc_std}')
+
+
+def cue_filtering():
+  with open('cue_results.txt', 'r') as f:
+    area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std = [float(n) for n in f.read().split(',')[2:]] # 17.694700095207864, 6.344815406670817, 0.652458410014255, 0.10566117930359069, 6.437163565738847, 1.5565604896009309, 0.7698992306070194, 0.13094394850836155
+  print(area_avg, ecc_std)
+
+
+if __name__ == '__main__':
+
+  dataset_path = sys.argv[1].rstrip('/')
+  num_folders = int(sys.argv[2])
+  num_frames = int(sys.argv[3])
+
+  # find_thresholds(dataset_path, num_folders, num_frames)
+  cue_filtering()
+
+  
