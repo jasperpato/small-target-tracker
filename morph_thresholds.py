@@ -60,16 +60,17 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
 if __name__ == '__main__':
 
   dataset_path = sys.argv[1].rstrip('/')
-  num_folders = sys.argv[2]
-  num_frames = sys.argv[3]
+  num_folders = int(sys.argv[2])
+  num_frames = int(sys.argv[3])
 
   area_avg, ext_avg, alen_avg, ecc_avg = 0, 0, 0, 0
   area_std, ext_std, alen_std, ecc_std = 0, 0, 0, 0
   total_cands = 0
 
   for j in range(1,num_folders+1):
+    print(f'Folder {j:03}')
 
-    dataloader = Dataloader(f'{dataset_path}/car/0{j:02}', img_file_pattern='*.jpg', frame_range=(1,num_frames))
+    dataloader = Dataloader(f'{dataset_path}/car/{j:03}', img_file_pattern='*.jpg', frame_range=(1,num_frames))
     frames = list(dataloader.preloaded_frames.values())
     step = 5
 

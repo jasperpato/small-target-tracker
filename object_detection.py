@@ -54,8 +54,10 @@ def region_growing(gray, binary):
     blob_rows, blob_cols = zip(*blob.coords)
     ctr_row, ctr_col = int(blob.centroid[0]), int(blob.centroid[1])
     blob_grays = gray[blob_rows, blob_cols]
+    
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
+    if not sd: continue
 
     if len(blob.coords) < 3:
       binary[blob_rows, blob_cols] = 0
@@ -63,7 +65,7 @@ def region_growing(gray, binary):
       
     t1 = norm.ppf(5e-3, loc=mean, scale=sd)
     t2 = 2 * mean - t1  
-    if not sd or t2 - t1 > 0.2: continue
+    if t2 - t1 > 0.2: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
