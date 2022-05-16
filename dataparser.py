@@ -42,8 +42,7 @@ class Dataloader(object):
     def preload_frames(self):
         start_frame, end_frame = self.frame_range
         frame_no = max(self.preloaded_frames.keys()) + 1 if self.preloaded_frames.keys() else start_frame
-        
-        while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no < end_frame:
+        while psutil.virtual_memory().percent > 100 - RAM_LIMIT and frame_no <= end_frame:
             if frame_no in self.frame_paths:
                 img_path = self.frame_paths[frame_no]
                 self.preloaded_frames[frame_no] = read_img(frame_no, img_path, self.gt_df)
@@ -78,11 +77,11 @@ class Dataloader(object):
         
     
 if __name__ == '__main__':
-    dataset_path = sys.argv[1].strip('/')
+    dataset_path = sys.argv[1].rstrip('/')
 
     # TESTING
-    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
-    frames = list(dataloader.preloaded_frames.values())[:3]
+    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg')
+    print(len(dataloader.preloaded_frames))
     
     
     
