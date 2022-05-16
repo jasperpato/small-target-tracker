@@ -74,12 +74,11 @@ if __name__ == '__main__':
     step = 5
 
     for i in range(step-1, len(frames)-step+1, step):
-    
-      ns = (frames[i-step+1], frames[i], frames[i+step-1])
-      grays = [color.rgb2gray(i[1]) for i in ns]
+
+      grays = [ color.rgb2gray(f[1]) for f in (frames[i-step+1], frames[i], frames[i+step-1]) ]
         
       binary = objects(grays)
-      # grown = region_growing(grays[1], binary)
+      grown = region_growing(grays[1], binary)
 
       ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, frames[i][2], 0.4)
 
