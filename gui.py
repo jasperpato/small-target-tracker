@@ -1,6 +1,10 @@
 import sys
 import time
+
 from dataparser import Dataloader
+from evaluation import evaluation_metrics
+from morph_thresholds import morph_cues
+from object_detection import objects, region_growing
 
 from os import listdir
 from os.path import isfile, join
@@ -9,7 +13,7 @@ from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, Q
 from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 import pyqtgraph as pg
-
+from skimage import measure, color
 running_window = []
 '''
 Launch the gui.py and click on load image to choose file path.
@@ -112,7 +116,8 @@ class Slideshow(QMainWindow):
         self.pathname = QFileDialog.getExistingDirectory(self, "Select directory")
         
         if self.pathname:
-            self.data = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 100))
+            loader = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 100))
+            pre_frames = list(loader.preloaded_frames.values())
             self.show()
         else:
             self.close()
@@ -125,25 +130,34 @@ class Slideshow(QMainWindow):
 
         self.num_object = []
         self.img = []
-        for frame, img, gtdata in self.data:
-            i = Image.fromarray(img, mode='RGB')
-            qt_img = ImageQt.ImageQt(i)
+
+        step = 5
+
+        for i in range(step-1, len(pre_frames)-step+1, step):
+            print('Progress of calculation: {:d}'.format(i))
+            grays = [ color.rgb2gray(f[1]) for f in (pre_frames[i-step+1], pre_frames[i], pre_frames[i+step-1]) ]
+            picture = [f[1] for f in (pre_frames[i-step+1], pre_frames[i], pre_frames[i+step-1])]
+            binary = objects(grays)
+            grown = region_growing(grays[1], binary)
+            ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, pre_frames[i][2], 0.4)
+
+            img = Image.fromarray(picture[0], mode='RGB')
+            qt_img = ImageQt.ImageQt(img)
             
             image = QPixmap.fromImage(qt_img)
-            
+
             self.painterInstance = QPainter(image)
             self.penRectangle = QPen(Qt.green)
             self.penRectangle.setWidth(3)
 
-            self.num_object.append(len(gtdata))
-            for e in gtdata:
+            self.num_object.append(ncands)
+            for box in pre_frames[i][2]:
                 # draw rectangle on painter
                 self.painterInstance.setPen(self.penRectangle)
-                self.painterInstance.drawRect(e[0],e[1],e[2],e[3])
+                self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
 
             self.img.append(image)
-        
-        
+        print("Finished calculations")
         self.timer = QBasicTimer()
         self.step = 0
         self.delay = 1000 #ms
@@ -190,11 +204,11 @@ class Slideshow(QMainWindow):
         if self.step >= len(self.img):
             self.timer.stop()
             self.step = 0
+            self.painterInstance.end()
             self.graphObjectDetected()
             self.graphScores()
             self.dialog2 = Statistics(self)
             self.dialog2.show()
-            self.painterInstance.end()
             return 
         self.timer.start(self.delay, self)
         self.label.setPixmap(self.img[self.step])

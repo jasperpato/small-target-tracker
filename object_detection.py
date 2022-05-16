@@ -54,8 +54,10 @@ def region_growing(gray, binary):
     blob_rows, blob_cols = zip(*blob.coords)
     ctr_row, ctr_col = int(blob.centroid[0]), int(blob.centroid[1])
     blob_grays = gray[blob_rows, blob_cols]
+    
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
+    if not sd: continue
 
     if len(blob.coords) < 3:
       binary[blob_rows, blob_cols] = 0

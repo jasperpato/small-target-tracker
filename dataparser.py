@@ -80,8 +80,8 @@ if __name__ == '__main__':
     dataset_path = sys.argv[1].rstrip('/')
 
     # TESTING
-    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg')
-    print(len(dataloader.preloaded_frames))
+    dataloader = Dataloader(f'{dataset_path}/car/028', img_file_pattern='*.jpg')
+    print('Frames', len(dataloader.preloaded_frames))
     
     
     
