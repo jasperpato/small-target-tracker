@@ -42,7 +42,7 @@ def association(region, tracks, previous_frame, current_frame):
     if len(region) > len(tracks):
         for r in row:
             if r in psuedo_row:
-                tracks.append(KF(region[count].centroid[0], region[count].centroid[1],0.1))
+                tracks.append(KalmanFilter(region[count].centroid[0], region[count].centroid[1],0.1))
             else:
                 tracks[r].update(region[count].centroid[0], region[count].centroid[1])
             count += 1
@@ -73,7 +73,7 @@ def association(region, tracks, previous_frame, current_frame):
 
     return changed_track
 
-def search_nearest(previous_frame,current_frame, previous_KF, row):
+def search_nearest(previous_frame, current_frame, previous_KF, row):
     current_KF = previous_KF[row].predict()
     """
     Search local area (Havent found algorithm to do it)
