@@ -7,8 +7,8 @@ from object_detection import objects
 """
 Class to initialise a Kalman Filter class with the necessary vectors
 """
-class KF:
-    def __init__(self, init_x, init_y, covar) -> None:
+class KalmanFilter:
+    def __init__(self, init_x, init_y, covar):
         # Initial mean vector of the state vector. Format : [x, y, v of x, v of y, a of x, a of y]
         self.x = np.array([init_x,init_y,0,0,0,0])
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         centroids = regionprops(label_b)
 
         if count == 0:
-            f = KF(centroids[0].centroid[0], centroids[0].centroid[1], 0.001)
+            f = KalmanFilter(centroids[0].centroid[0], centroids[0].centroid[1], 0.001)
             print("Initial x : {:f}, Initial y : {:f}, Inital velocity : {:f}".format(f.x[0],f.x[1], (f.x[2]**2+f.x[3]**2)**0.5))
             print("The P matrix : \n")
             print(f.P)

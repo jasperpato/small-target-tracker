@@ -1,10 +1,12 @@
 import sys
 import time
 
+from cv2 import threshold
+
 from dataparser import Dataloader
 from evaluation import evaluation_metrics
-from morph_thresholds import cue_filtering, morph_cues
-from object_detection import objects, region_growing
+from find_thresholds import cue_filtering, morph_cues
+from object_detection import get_thresholds, objects, region_growing
 
 from os import listdir
 from os.path import isfile, join
@@ -138,6 +140,7 @@ class Slideshow(QMainWindow):
         self.img = []
 
         step = 1
+        thresholds = get_thresholds()
 
         for i in range(step, len(pre_frames)-step, step):
             print('Progress of calculation: {:d}'.format(i))
@@ -147,8 +150,7 @@ class Slideshow(QMainWindow):
                 
             binary = objects(grays)
             grown = region_growing(grays[1], binary)
-            filtered = cue_filtering(grown)
-
+            filtered = cue_filtering(grown, thresholds)
 
             ncands = np.max(measure.label(filtered))
             print(ncands)

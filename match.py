@@ -1,10 +1,10 @@
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 import math
-from kalman_filter import KF
+from kalman_filter import KalmanFilter
 import random
 import sys
-from morph_thresholds import cue_filtering
+from find_thresholds import cue_filtering
 from object_detection import objects, region_growing
 from skimage import color
 from dataparser import Dataloader
@@ -39,7 +39,7 @@ def association(region, tracks):
     if len(region) > len(tracks):
         for c in col:
             if c in psuedo_col:
-                tracks.append(KF(region[c].centroid[0], region[c].centroid[1], 0.1))
+                tracks.append(KalmanFilter(region[c].centroid[0], region[c].centroid[1], 0.1))
             else:
                 tracks[row[c]].update(region[c].centroid[0], region[c].centroid[1])
             count += 1
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         print(len(tracks))
         if i == i0:
             for b in blobs:
-                tracks.append(KF(b.centroid[0], b.centroid[1], 0.1))
+                tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
         else:
             association(blobs, tracks)
     

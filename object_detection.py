@@ -1,12 +1,10 @@
 import sys
 import math
-from cv2 import threshold
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from copy import deepcopy
 from scipy.stats import norm
-from scipy import signal
 from dataparser import Dataloader
 from skimage import measure, color
 
@@ -92,7 +90,6 @@ def filter(binary, thresholds):
   for blob in blobs:
     blob_rows, blob_cols = zip(*blob.coords)
 
-  # hardcoded with threshold range = 0.6
     t1_area, t2_area = thresholds['area'][0], thresholds['area'][1]
     t1_ext, t2_ext = thresholds['ext'][0], thresholds['ext'][1]
     t1_alen, t2_alen = thresholds['alen'][0], thresholds['alen'][1]
@@ -108,7 +105,7 @@ def filter(binary, thresholds):
 
 def get_thresholds():
   thresholds = { 'area': (0,0), 'ext': (0,0), 'alen': (0,0), 'ecc': (0,0), }
-  with open('cue_thresholds.txt', 'r') as f:
+  with open('results/cue_thresholds.txt', 'r') as f:
     data = [float(n) for n in f.read().split(',')]
     thresholds['area'] = (data[0], data[1])
     thresholds['ext'] = (data[2], data[3])
