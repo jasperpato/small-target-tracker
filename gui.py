@@ -14,8 +14,10 @@ from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 import pyqtgraph as pg
 from skimage import measure, color
+
 running_window = []
 '''
+
 Launch the gui.py and click on load image to choose file path.
 Select where the mot/car/001 file is.
 '''

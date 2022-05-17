@@ -71,8 +71,7 @@ class Dataloader(object):
         
     
     def __iter__(self):
-        frames = [f for f in self.frame_paths.keys() 
-                  if f >= self.frame_range[0] and f <= self.frame_range[1]]
+        frames = [f for f in self.frame_paths.keys() if f >= self.frame_range[0] and f <= self.frame_range[1]]
         self.frame_iterator = iter(sorted(frames))
         return self
             
