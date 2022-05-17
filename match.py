@@ -1,7 +1,7 @@
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 import math
-from kalman_filter import KF
+from kalman_filter import KalmanFilter
 import random
 import sys
 from object_detection import objects, grow, filter, get_thresholds
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         
         if i == step:
             for b in blobs:
-                tracks.append(KF(b.centroid[0], b.centroid[1], 0.1))
+                tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
         else:
             association(blobs, tracks, previous, current)
         

@@ -1,13 +1,8 @@
 import sys
-import time
 
 from dataparser import Dataloader
-from evaluation import evaluation_metrics
-from morph_thresholds import cue_filtering, morph_cues
-from object_detection import objects, region_growing
+from object_detection import get_thresholds, objects, grow, filter
 
-from os import listdir
-from os.path import isfile, join
 from PySide6.QtCore import Qt, Slot, QBasicTimer, QStringListModel
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QLineEdit, QMessageBox, QLabel, QGridLayout, QSizePolicy, QFileDialog
 from PySide6.QtGui import QPixmap, QPainter, QPen
@@ -15,8 +10,7 @@ from PIL import Image, ImageQt
 import pyqtgraph as pg
 from skimage import measure, color
 
-import numpy as np
-import matplotlib.pyplot as plt
+from numpy import maximum
 from skimage import measure
 
 running_window = []
@@ -138,6 +132,7 @@ class Slideshow(QMainWindow):
         self.img = []
 
         step = 1
+        thresholds = get_thresholds()
 
         for i in range(step, len(pre_frames)-step, step):
             print('Progress of calculation: {:d}'.format(i))
@@ -146,11 +141,10 @@ class Slideshow(QMainWindow):
             grays = [ color.rgb2gray(p) for p in picture ]
                 
             binary = objects(grays)
-            grown = region_growing(grays[1], binary)
-            filtered = cue_filtering(grown)
+            grown = grow(grays[1], binary)
+            filtered = filter(grown, thresholds)
 
-
-            ncands = np.max(measure.label(filtered))
+            ncands = maximum(measure.label(filtered))
             print(ncands)
 
             img = Image.fromarray(picture[0], mode='RGB')
