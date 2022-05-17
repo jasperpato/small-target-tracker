@@ -13,8 +13,7 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
   '''
   Returns morphological feature averages and stds for true positives in one image
   '''
-
-  binary = deepcopy(binary)
+  
   labeled_image = measure.label(binary, background=0, connectivity=1)
   blobs = measure.regionprops(labeled_image)
 
@@ -36,7 +35,7 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
 
     if max_iou >= iou_threshold and seen_gts[gt_idx] == 0:
       seen_gts[gt_idx] = 1 # mark as detected
-      tp_areas.append(blob.area_filled)
+      tp_areas.append(min(blob.area_filled, Box(*gt_boxes[gt_idx]).area)) # if blob is larger than gt box, take gt box area
       tp_extents.append(blob.area_filled / blob.area_bbox)
       tp_a_lengths.append(blob.axis_major_length)
       tp_eccentricities.append(blob.eccentricity)

@@ -104,8 +104,13 @@ def filter(binary, thresholds):
 
 
 def get_thresholds():
+  '''
+  Load morphological cue thresholds from file. Should be called only once.
+  Currently uses backup data because region growing is untrustworthy.
+  '''
+
   thresholds = { 'area': (0,0), 'ext': (0,0), 'alen': (0,0), 'ecc': (0,0), }
-  with open('results/cue_thresholds.txt', 'r') as f:
+  with open('results/cue_thresholds_backup.txt', 'r') as f:
     data = [float(n) for n in f.read().split(',')]
     thresholds['area'] = (data[0], data[1])
     thresholds['ext'] = (data[2], data[3])
@@ -130,9 +135,6 @@ if __name__ == '__main__':
 
     frames = (preloaded_frames[i-step], preloaded_frames[i], preloaded_frames[i+step])
     grays = [color.rgb2gray(f[1]) for f in frames]
-    
-    plt.figure()
-    plt.imshow(grays[1], cmap='gray')
 
     b = objects(grays)
     _, ax1 = plt.subplots()
@@ -146,10 +148,8 @@ if __name__ == '__main__':
     _, ax3 = plt.subplots()
     ax3.imshow(f, cmap='gray')
 
-    if sys.argv[1] == '--boxes':
-      for box in frames[1][2]:
-        ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
-        ax2.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+    for box in frames[1][2]:
+      ax3.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
 
     plt.show(block=True)
     break
