@@ -3,7 +3,7 @@ import time
 
 from dataparser import Dataloader
 from evaluation import evaluation_metrics
-from morph_thresholds import morph_cues
+from morph_thresholds import cue_filtering, morph_cues
 from object_detection import objects, region_growing
 
 from os import listdir
@@ -14,6 +14,10 @@ from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 import pyqtgraph as pg
 from skimage import measure, color
+
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage import measure
 
 running_window = []
 '''
@@ -118,7 +122,7 @@ class Slideshow(QMainWindow):
         self.pathname = QFileDialog.getExistingDirectory(self, "Select directory")
         
         if self.pathname:
-            loader = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 100))
+            loader = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 10))
             pre_frames = list(loader.preloaded_frames.values())
             self.show()
         else:
@@ -133,15 +137,21 @@ class Slideshow(QMainWindow):
         self.num_object = []
         self.img = []
 
-        step = 5
+        step = 1
 
-        for i in range(step-1, len(pre_frames)-step+1, step):
+        for i in range(step, len(pre_frames)-step, step):
             print('Progress of calculation: {:d}'.format(i))
-            grays = [ color.rgb2gray(f[1]) for f in (pre_frames[i-step+1], pre_frames[i], pre_frames[i+step-1]) ]
-            picture = [f[1] for f in (pre_frames[i-step+1], pre_frames[i], pre_frames[i+step-1])]
+
+            picture = [f[1] for f in (pre_frames[i-step], pre_frames[i], pre_frames[i+step])]
+            grays = [ color.rgb2gray(p) for p in picture ]
+                
             binary = objects(grays)
             grown = region_growing(grays[1], binary)
-            ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, pre_frames[i][2], 0.4)
+            filtered = cue_filtering(grown)
+
+
+            ncands = np.max(measure.label(filtered))
+            print(ncands)
 
             img = Image.fromarray(picture[0], mode='RGB')
             qt_img = ImageQt.ImageQt(img)
@@ -248,6 +258,11 @@ class Statistics(QMainWindow):
 
 
 if __name__ == "__main__":
+
+    dataset_path = sys.argv[1].rstrip('/')
+    max_frame = int(sys.argv[2])
+    step = int(sys.argv[3])
+
     app = QApplication(sys.argv)
     widget = Control()
     sys.exit(app.exec())

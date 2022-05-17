@@ -1,5 +1,6 @@
 import sys
 import math
+from cv2 import threshold
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -41,13 +42,13 @@ def objects(grays):
   return binary
 
 
-def region_growing(gray, binary):
+def grow(gray, binary):
   '''
-  Implementation a new region growing function that is applied to centroids of candidate clusters
+  Implement a region growing function that is applied at the centroids of candidate clusters.
   '''
   binary = deepcopy(binary)
   height, width = gray.shape
-  labeled_image = measure.label(binary, background=0, connectivity=2)
+  labeled_image = measure.label(binary)
   blobs = measure.regionprops(labeled_image)
 
   for blob in blobs:
@@ -76,10 +77,46 @@ def region_growing(gray, binary):
     gray_region = gray[b:t, l:r]
     candidates = np.logical_and(gray_region > t1, gray_region < t2)
     binary[b:t, l:r] = np.logical_or(candidates, binary[b:t, l:r])
-    
+
   return binary
-    
-      
+
+
+def filter(binary, thresholds):
+  '''
+  Filter based on pre-defined morphological cue thresholds.
+  '''
+  binary = deepcopy(binary)
+  labeled_image = measure.label(binary)
+  blobs = measure.regionprops(labeled_image)
+
+  for blob in blobs:
+    blob_rows, blob_cols = zip(*blob.coords)
+
+  # hardcoded with threshold range = 0.6
+    t1_area, t2_area = thresholds['area'][0], thresholds['area'][1]
+    t1_ext, t2_ext = thresholds['ext'][0], thresholds['ext'][1]
+    t1_alen, t2_alen = thresholds['alen'][0], thresholds['alen'][1]
+    t1_ecc, t2_ecc = thresholds['ecc'][0], thresholds['ecc'][1]
+
+    if blob.area_filled < t1_area or blob.area_filled > t2_area: binary[blob_rows, blob_cols] = 0
+    if blob.extent < t1_ext or blob.extent > t2_ext: binary[blob_rows, blob_cols] = 0
+    if blob.axis_major_length < t1_alen or blob.axis_major_length > t2_alen: binary[blob_rows, blob_cols] = 0
+    if blob.eccentricity < t1_ecc or blob.eccentricity > t2_ecc: binary[blob_rows, blob_cols] = 0
+ 
+  return binary
+
+
+def get_thresholds():
+  thresholds = { 'area': (0,0), 'ext': (0,0), 'alen': (0,0), 'ecc': (0,0), }
+  with open('cue_thresholds.txt', 'r') as f:
+    data = [float(n) for n in f.read().split(',')]
+    thresholds['area'] = (data[0], data[1])
+    thresholds['ext'] = (data[2], data[3])
+    thresholds['alen'] = (data[4], data[5])
+    thresholds['ecc'] = (data[6], data[7])
+  return thresholds
+
+
 if __name__ == '__main__':
 
   index = 1 if len(sys.argv) == 2 else 2
@@ -88,10 +125,13 @@ if __name__ == '__main__':
   # TESTING
   loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   preloaded_frames = list(loader.preloaded_frames.values())
-  i0 = 10
+  step = 10
+
+  thresholds = get_thresholds()
   
-  for i in range(i0, len(preloaded_frames) - i0):
-    frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
+  for i in range(step, len(preloaded_frames)-step, step):
+
+    frames = (preloaded_frames[i-step], preloaded_frames[i], preloaded_frames[i+step])
     grays = [color.rgb2gray(f[1]) for f in frames]
     
     plt.figure()
@@ -101,9 +141,13 @@ if __name__ == '__main__':
     _, ax1 = plt.subplots()
     ax1.imshow(b, cmap='gray')
 
-    grown = region_growing(grays[1], b)
+    g = grow(grays[1], b)
     _, ax2 = plt.subplots()
-    ax2.imshow(grown, cmap='gray')
+    ax2.imshow(g, cmap='gray')
+
+    f = filter(b, thresholds)
+    _, ax3 = plt.subplots()
+    ax3.imshow(f, cmap='gray')
 
     if sys.argv[1] == '--boxes':
       for box in frames[1][2]:

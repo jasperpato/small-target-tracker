@@ -4,10 +4,13 @@ import math
 from kalman_filter import KF
 import random
 import sys
-from object_detection import objects
+from morph_thresholds import cue_filtering
+from object_detection import objects, region_growing
 from skimage import color
 from dataparser import Dataloader
 from skimage.measure import label, regionprops
+
+
 def association(region, tracks):
     psuedo_col = []
     psuedo_row = []
@@ -20,11 +23,12 @@ def association(region, tracks):
             psuedo_row.append(i)
 
     cost = np.full((len(tracks) + len(psuedo_row), len(region) + len(psuedo_col)), 1000)
-    print("done")
+    # print("done")
+
     # Create cost matrix
     for i in range(len(tracks)):
         tracks[i].predict()
-        print("done")
+        # print("done")
         for j in range(len(region)):
             point1 = np.array((tracks[i].x[0], tracks[i].x[1]))
             point2 = np.array((region[j].centroid[0],region[j].centroid[1]))
@@ -60,13 +64,16 @@ if __name__ == "__main__":
         grays = [color.rgb2gray(f[1]) for f in frames]
 
         b = objects(grays)
-        label_b = label(b)
-        region = regionprops(label_b)
-        print(len(region))
+        g = region_growing(grays[1], b)
+        m = cue_filtering(g)
+
+        label_b = label(m)
+        blobs = regionprops(label_b)
+        print(len(blobs))
         print(len(tracks))
         if i == i0:
-            for i in region:
-                tracks.append(KF(i.centroid[0], i.centroid[1], 0.1))
+            for b in blobs:
+                tracks.append(KF(b.centroid[0], b.centroid[1], 0.1))
         else:
-            association(region, tracks)
+            association(blobs, tracks)
     
