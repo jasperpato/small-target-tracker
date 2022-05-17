@@ -5,7 +5,7 @@ from dataparser import Dataloader
 from object_detection import get_thresholds, objects, grow, filter
 
 from PySide6.QtCore import Qt, Slot, QBasicTimer, QStringListModel
-from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QLineEdit, QMessageBox, QLabel, QGridLayout, QSizePolicy, QFileDialog
+from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QLineEdit, QMessageBox, QProgressBar, QLabel, QGridLayout, QSizePolicy, QFileDialog
 from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 import pyqtgraph as pg
@@ -18,20 +18,19 @@ running_window = []
 dataset_path = None
 max_frame = None
 step = None
-
+p_bar = None
 '''
 python3 gui.py {....../car/{Pick a number}} {Number of images to load} {Steps between frames}
 '''
 
-
-class Slideshow(QWidget):
+class Slideshow(QMainWindow):
     def __init__(self, parent = None):
         super(Slideshow, self).__init__(parent)
         global running_window
         global dataset_path
         global max_frame
         global step
-
+        global p_bar
 
         running_window.append(self)
         
@@ -42,6 +41,31 @@ class Slideshow(QWidget):
         self.label.resize(500,500)
         self.label.move(50,50)
         self.label.show()
+        self.title = QLabel("<h3>Statistics</h3>",self)
+        self.title.move(600, 10)
+
+        self.stat1 = QLabel("Unmatch Ground Truth",self)
+        self.stat1.adjustSize()
+        self.stat1.move(600, 50)
+        self.stat1a = QLabel("Change tracks", self)
+        self.stat1a.adjustSize()
+        self.stat1a.move(600, 100)
+
+        self.stat2 = QLabel("Average Precision Score",self)
+        self.stat2.adjustSize()
+        self.stat2.move(600, 150)
+
+        self.stat3 = QLabel("Recall score",self)
+        self.stat3.adjustSize()
+        self.stat3.move(600, 200)
+
+        self.button = QPushButton(self)
+        self.button.setText("Close All")
+        self.button.move(600,250)
+        self.button.clicked.connect(self.button_clicked)
+
+        self.dialog1 = ProgressBar()
+        self.pbar = p_bar
 
         self.num_object = []
         self.img = []
@@ -49,17 +73,21 @@ class Slideshow(QWidget):
         thresholds = get_thresholds()
 
         for i in range(step, len(pre_frames)-step, step):
-            print('Progress of calculation: {:d}'.format(i))
+            # For progress bar
+            value = self.pbar.value()
+            value = int(round(((i+1)/(len(pre_frames)-step))*100))
+            self.pbar.setValue(value)
+            QApplication.processEvents()
 
+            # Main application
             picture = [f[1] for f in (pre_frames[i-step], pre_frames[i], pre_frames[i+step])]
             grays = [ color.rgb2gray(p) for p in picture ]
                 
             binary = objects(grays)
-            grown = grow(grays[1], binary)
-            filtered = filter(grown, thresholds)
+            grown = grow(grays[1], binary, copy = True)
+            filtered = filter(grown, thresholds, copy = True)
 
             ncands = np.amax(measure.label(filtered))
-            print(ncands)
 
             img = Image.fromarray(picture[0], mode='RGB')
             qt_img = ImageQt.ImageQt(img)
@@ -79,7 +107,8 @@ class Slideshow(QWidget):
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
             self.img.append(image)
 
-        print("Finished calculations")
+        self.dialog1.close()
+
         self.timer = QBasicTimer()
         self.step = 0
         self.delay = 1000 #ms
@@ -128,43 +157,30 @@ class Slideshow(QWidget):
             self.step = 0
             self.graphObjectDetected()
             self.graphScores()
-            self.dialog2 = Statistics(self)
-            self.dialog2.show()
             return 
         self.timer.start(self.delay, self)
         self.label.setPixmap(self.img[self.step])
         self.label.show()
         self.step += 1
-
-class Statistics(QMainWindow):
-    def __init__(self, parent = None):
-        super(Statistics, self).__init__(parent)
+    
+    def button_clicked(self):
         global running_window
-        self.setWindowTitle("Small Target Tracker")
-        self.setGeometry(0,0, 300, 210)
-        self.initUI()
-        self.show()
-        running_window.append(self)
+        for w in running_window:
+            w.close()
+        self.close()
+
+class ProgressBar(QWidget):
+    def __init__(self,parent=None):
+        super().__init__()
+        global p_bar
+        self.pbar = QProgressBar(self)
+        self.pbar.setGeometry(30, 40, 200, 25)
+        self.pbar.setValue(0)
         
-    def initUI(self):
-        self.title = QLabel("<h3>Statistics</h3>",self)
-        self.title.move(110, 10)
-
-        self.stat1 = QLabel("Unmatch Ground Truth",self)
-        self.stat1.adjustSize()
-        self.stat1.move(10, 60)
-        self.stat1a = QLabel("/Change tracks", self)
-        self.stat1a.adjustSize()
-        self.stat1a.move(10, 75)
-
-        self.stat2 = QLabel("Average Precision Score",self)
-        self.stat2.adjustSize()
-        self.stat2.move(10, 110)
-
-        self.stat3 = QLabel("Recall score",self)
-        self.stat3.adjustSize()
-        self.stat3.move(10, 160)
-
+        self.setWindowTitle("Launching Tracker")
+        self.setGeometry(32,32,320,100)
+        self.show()
+        p_bar = self.pbar
 
 if __name__ == "__main__":
 
@@ -174,7 +190,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     widget = Slideshow()
-    widget.resize(1000,1000)
+    widget.resize(1000,600)
     widget.setWindowTitle("Small target tracker")
     widget.show()
     sys.exit(app.exec())
