@@ -4,50 +4,83 @@ import math
 from kalman_filter import KF
 import random
 import sys
-from morph_thresholds import cue_filtering
-from object_detection import objects, region_growing
+from object_detection import objects, grow, filter, get_thresholds
 from skimage import color
 from dataparser import Dataloader
 from skimage.measure import label, regionprops
 
 
-def association(region, tracks):
+def association(region, tracks, previous_frame, current_frame):
     psuedo_col = []
     psuedo_row = []
-
+    previous_KF = tracks 
+    changed_track = 0 # For GUI statistic
+    
     if len(region) > len(tracks):
         for i in range(len(region), len(region) + (len(region) - len(tracks))):
-            psuedo_col.append(i)
+            psuedo_row.append(i-(len(region) - len(tracks)))
+
     if len(tracks) > len(region):
         for i in range(len(tracks), len(tracks) + (len(tracks) - len(region))):
-            psuedo_row.append(i)
+            psuedo_col.append(i-(len(tracks) - len(region)))
 
     cost = np.full((len(tracks) + len(psuedo_row), len(region) + len(psuedo_col)), 1000)
-    # print("done")
-
     # Create cost matrix
     for i in range(len(tracks)):
         tracks[i].predict()
-        # print("done")
+
         for j in range(len(region)):
             point1 = np.array((tracks[i].x[0], tracks[i].x[1]))
             point2 = np.array((region[j].centroid[0],region[j].centroid[1]))
             cost[i, j] = np.linalg.norm(point1 - point2)
 
+    print(cost)
     row , col = linear_sum_assignment(cost)
     count = 0
+
+    # Assign new tracks to unassigned hypothesis
     if len(region) > len(tracks):
+        for r in row:
+            if r in psuedo_row:
+                tracks.append(KF(region[count].centroid[0], region[count].centroid[1],0.1))
+            else:
+                tracks[r].update(region[count].centroid[0], region[count].centroid[1])
+            count += 1
+    
+    # Send additional unassigned tracks to search engine
+    delete_track = []
+    if len(tracks) > len(region):
         for c in col:
             if c in psuedo_col:
-                tracks.append(KF(region[c].centroid[0], region[c].centroid[1], 0.1))
+                search_nearest(previous_frame, current_frame, previous_KF, count)
+                """
+                If true:
+                    tracks[count] = KF(tracks[count].x[0], tracks[count].x[1], 0.1) # assuming object stopped
+                else:
+                    delete_track.append(count) # Delete this row later so that it does not mess up the other association
+                
+                """
             else:
-                tracks[row[c]].update(region[c].centroid[0], region[c].centroid[1])
+                tracks[count].update(region[c].centroid[0], region[c].centroid[1])
             count += 1
 
-    for i in range(len(row)):
-        tracks[row[i]].update(region[col[i]].centroid[0], region[col[i]].centroid[1])
+        if len(delete_track) != 0:
+            temp = []
+            for i in len(tracks):
+                if i not in delete_track:
+                    temp.append(tracks[i])
+            tracks = temp
 
-    return
+    return changed_track
+
+def search_nearest(previous_frame,current_frame, previous_KF, row):
+    current_KF = previous_KF[row].predict()
+    """
+    Search local area (Havent found algorithm to do it)
+    return True or False
+    """
+    
+    pass
 
 if __name__ == "__main__":
     index = 1 if len(sys.argv) == 2 else 2
@@ -56,24 +89,31 @@ if __name__ == "__main__":
     # TESTING
     loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 50))
     preloaded_frames = list(loader.preloaded_frames.values())
-    i0 = 10
+    step = 1
+    thresholds = get_thresholds()
 
     tracks = []
-    for i in range(i0, len(preloaded_frames) - i0):
-        frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
+    for i in range(step, len(preloaded_frames)-step, step):
+        frames = (preloaded_frames[i-step], preloaded_frames[i], preloaded_frames[i+step])
         grays = [color.rgb2gray(f[1]) for f in frames]
 
-        b = objects(grays)
-        g = region_growing(grays[1], b)
-        m = cue_filtering(g)
+        current = grays
 
-        label_b = label(m)
-        blobs = regionprops(label_b)
-        print(len(blobs))
-        print(len(tracks))
-        if i == i0:
+        b = objects(grays)
+        g = grow(grays[1], b)
+        f = filter(b, thresholds)
+
+        label_f = label(f)
+        blobs = regionprops(label_f)
+        print('Number of hypothesis : {}'.format(len(blobs)))
+        
+        if i == step:
             for b in blobs:
                 tracks.append(KF(b.centroid[0], b.centroid[1], 0.1))
         else:
-            association(blobs, tracks)
+            association(blobs, tracks, previous, current)
+        
+        previous = current
+        
+        print('Number of tracks : {}'.format(len(tracks)))
     
