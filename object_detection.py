@@ -6,8 +6,8 @@ import matplotlib.patches as patches
 from copy import deepcopy
 from scipy.stats import norm
 from dataparser import Dataloader
-from skimage import measure, color
-
+from skimage import measure, color, filters, exposure
+  
 
 def objects(grays):
   '''
@@ -44,27 +44,26 @@ def grow(gray, binary, **kwargs):
   '''
   Implement a region growing function that is applied at the centroids of candidate clusters.
   '''
-  if kwargs['copy']: binary = deepcopy(binary)
+  if kwargs.get('copy', False): binary = deepcopy(binary)
   height, width = gray.shape
-  labeled_image = measure.label(binary)
-  blobs = measure.regionprops(labeled_image)
+  blobs = measure.regionprops(
+          measure.label(binary, background=0, connectivity=1))
 
   for blob in blobs:
-    blob_rows, blob_cols = zip(*blob.coords)
+    blob_rows, blob_cols = blob.coords.T
     ctr_row, ctr_col = int(blob.centroid[0]), int(blob.centroid[1])
     blob_grays = gray[blob_rows, blob_cols]
+    
+    if len(blob.coords) < 3:
+      binary[blob_rows, blob_cols] = 0
+      continue
     
     mean = np.mean(blob_grays)
     sd = np.std(blob_grays)
     if not sd: continue
-
-    if len(blob.coords) < 3:
-      binary[blob_rows, blob_cols] = 0
-      continue
       
-    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
+    t1 = norm.ppf(0.05, loc=mean, scale=sd)
     t2 = 2 * mean - t1  
-    if t2 - t1 > 0.4: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
@@ -74,6 +73,8 @@ def grow(gray, binary, **kwargs):
     
     gray_region = gray[b:t, l:r]
     candidates = np.logical_and(gray_region > t1, gray_region < t2)
+    new_labels = measure.label(candidates, background=0, connectivity=1)
+    candidates = np.logical_and(candidates, new_labels == new_labels[4, 4])
     binary[b:t, l:r] = np.logical_or(candidates, binary[b:t, l:r])
 
   return binary
@@ -83,7 +84,7 @@ def filter(binary, thresholds, **kwargs):
   '''
   Filter based on pre-defined morphological cue thresholds.
   '''
-  if kwargs['copy']: binary = deepcopy(binary)
+  if kwargs.get('copy', False): binary = deepcopy(binary)
   labeled_image = measure.label(binary)
   blobs = measure.regionprops(labeled_image)
 
@@ -127,29 +128,38 @@ if __name__ == '__main__':
   # TESTING
   loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   preloaded_frames = list(loader.preloaded_frames.values())
-  step = 10
+  i0 = 10
 
-  thresholds = get_thresholds()
+  frames = [preloaded_frames[0+j*i0] for j in (-1,0,1)]
+  grays = [color.rgb2gray(f[1]) for f in frames]
+  ctr_gray = deepcopy(grays[1])
+  ctr_gray = filters.unsharp_mask(ctr_gray, radius=2.0, amount=3.0)
+
+  plt.figure("Gray Image")
+  plt.imshow(ctr_gray, cmap='gray')
+
+  candidates = objects(grays)
+  _, ax1 = plt.subplots()
+  ax1.set_title("Candidate Objects Detection")
+  ax1.imshow(candidates, cmap='gray')
+
+  grown_candidates = grow(ctr_gray, candidates)
+  _, ax2 = plt.subplots()
+  ax2.set_title("Candidate Object Growing")
+  ax2.imshow(grown_candidates, cmap='gray')
   
-  for i in range(step, len(preloaded_frames)-step, step):
+  filtered_candidates = filter(grown_candidates, get_thresholds())
+  _, ax3 = plt.subplots()
+  ax3.set_title("Candidate Match Discrimation")
+  ax3.imshow(filtered_candidates, cmap='gray')
 
-    frames = (preloaded_frames[i-step], preloaded_frames[i], preloaded_frames[i+step])
-    grays = [color.rgb2gray(f[1]) for f in frames]
-
-    b = objects(grays)
-    _, ax1 = plt.subplots()
-    ax1.imshow(b, cmap='gray')
-
-    g = grow(grays[1], b, copy=True)
-    _, ax2 = plt.subplots()
-    ax2.imshow(g, cmap='gray')
-
-    f = filter(b, thresholds, copy=True)
-    _, ax3 = plt.subplots()
-    ax3.imshow(f, cmap='gray')
-
+  if sys.argv[1] == '--boxes':
     for box in frames[1][2]:
-      ax3.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
-
-    plt.show(block=True)
-    break
+      ax2.add_patch(patches.Rectangle((box[0] - 0.5, box[1] - 0.5), 
+                                      box[2], box[3], 
+                                      linewidth=1, edgecolor='r', facecolor='none'))
+      ax3.add_patch(patches.Rectangle((box[0] - 0.5, box[1] - 0.5),
+                                      box[2], box[3], 
+                                      linewidth=1, edgecolor='r', facecolor='none'))
+      
+  plt.show(block=True)
