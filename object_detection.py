@@ -40,11 +40,11 @@ def objects(grays):
   return binary
 
 
-def grow(gray, binary):
+def grow(gray, binary, **kwargs):
   '''
   Implement a region growing function that is applied at the centroids of candidate clusters.
   '''
-  binary = deepcopy(binary)
+  if kwargs['copy']: binary = deepcopy(binary)
   height, width = gray.shape
   labeled_image = measure.label(binary)
   blobs = measure.regionprops(labeled_image)
@@ -79,11 +79,11 @@ def grow(gray, binary):
   return binary
 
 
-def filter(binary, thresholds):
+def filter(binary, thresholds, **kwargs):
   '''
   Filter based on pre-defined morphological cue thresholds.
   '''
-  binary = deepcopy(binary)
+  if kwargs['copy']: binary = deepcopy(binary)
   labeled_image = measure.label(binary)
   blobs = measure.regionprops(labeled_image)
 
@@ -140,11 +140,11 @@ if __name__ == '__main__':
     _, ax1 = plt.subplots()
     ax1.imshow(b, cmap='gray')
 
-    g = grow(grays[1], b)
+    g = grow(grays[1], b, copy=True)
     _, ax2 = plt.subplots()
     ax2.imshow(g, cmap='gray')
 
-    f = filter(b, thresholds)
+    f = filter(b, thresholds, copy=True)
     _, ax3 = plt.subplots()
     ax3.imshow(f, cmap='gray')
 

@@ -68,9 +68,9 @@ def find_thresholds(dataset_path, num_folders, num_frames, iou_threshold=0.5, pr
       grays = [ color.rgb2gray(f[1]) for f in (frames[i-step], frames[i], frames[i+step]) ]
         
       binary = objects(grays)
-      grown = grow(grays[1], binary)
+      # grown = grow(grays[1], binary)
 
-      ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(grown, frames[i][2], iou_threshold)
+      ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, frames[i][2], iou_threshold)
 
       # cumulative average
       area_avg = (area_avg * total_cands + ar_avg * ncands) / (total_cands + ncands)
