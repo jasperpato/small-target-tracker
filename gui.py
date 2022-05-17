@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 
 from dataparser import Dataloader
 from object_detection import get_thresholds, objects, grow, filter
@@ -14,124 +15,37 @@ from numpy import maximum
 from skimage import measure
 
 running_window = []
+dataset_path = None
+max_frame = None
+step = None
+
+'''
+python3 gui.py {....../car/{Pick a number}} {Number of images to load} {Steps between frames}
 '''
 
-Launch the gui.py and click on load image to choose file path.
-Select where the mot/car/001 file is.
-'''
-class Control(QWidget):
-    def __init__(self, parent = None):
-        super(Control, self).__init__(parent)
-        self.setWindowTitle("Small Target Tracker")
-        self.grid = QGridLayout()
-        self.setLayout(self.grid)
-        self.openwindows = [False, False]
-        self.initUI()
-        self.show()
 
-    def initUI(self):
-        # Parameters that can be changed
-        self.message1 = QLabel("<h3>Parameters</h3>",self)
-        self.message1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message1)
-
-        self.message2 = QLabel("Area",self)
-        self.Alow = QLineEdit('20',self)
-        self.Ahigh = QLineEdit('20',self)
-        self.message2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Alow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Ahigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message2, 1, 0)
-        self.grid.addWidget(self.Alow, 2,0)
-        self.grid.addWidget(QLabel("< area <", self), 2,1)
-        self.grid.addWidget(self.Ahigh, 2,2)
-
-        self.message3 = QLabel("Extent",self)
-        self.Elow = QLineEdit('20',self)
-        self.Ehigh = QLineEdit('20',self)
-        self.message3.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Elow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Ehigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message3, 3, 0)
-        self.grid.addWidget(self.Elow, 4,0)
-        self.grid.addWidget(QLabel("< extent <", self), 4,1)
-        self.grid.addWidget(self.Ehigh, 4,2)
-
-        self.message4 = QLabel("Major Axis",self)
-        self.Mlow = QLineEdit('20',self)
-        self.Mhigh = QLineEdit('20',self)
-        self.message4.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Mlow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Mhigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message4, 5, 0)
-        self.grid.addWidget(self.Mlow, 6,0)
-        self.grid.addWidget(QLabel("< major axis <", self), 6,1)
-        self.grid.addWidget(self.Mhigh, 6,2)
-
-        self.message5 = QLabel("Eccentricity",self)
-        self.Eclow = QLineEdit('20',self)
-        self.Echigh = QLineEdit('20',self)
-        self.message5.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Eclow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.Echigh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.message5, 7, 0)
-        self.grid.addWidget(self.Eclow, 8,0)
-        self.grid.addWidget(QLabel("< eccentricity <", self), 8,1)
-        self.grid.addWidget(self.Echigh, 8,2)
-
-        # Button to load image
-        self.button1 = QPushButton('Load Image Frames',self)
-        self.button1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.button1, 9,0)
-
-        # Button to close all windows
-        self.button2 = QPushButton('Close Windows',self)
-        self.button2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.grid.addWidget(self.button2, 9,2)
-
-        # Button interactions
-        self.button1.clicked.connect(self.load)
-        self.button2.clicked.connect(self.closeall)
-
-    def load(self):
-        self.dialog1 = Slideshow(self)
-
-    def closeall(self):
-        global running_window
-        for i in running_window:
-            i.close()
-        running_window = []
-
-class Slideshow(QMainWindow):
+class Slideshow(QWidget):
     def __init__(self, parent = None):
         super(Slideshow, self).__init__(parent)
         global running_window
-        self.setWindowTitle("Small Target Tracker")
-        self.setGeometry(100,100, 800,800)
+        global dataset_path
+        global max_frame
+        global step
+
 
         running_window.append(self)
-
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        self.pathname = QFileDialog.getExistingDirectory(self, "Select directory")
         
-        if self.pathname:
-            loader = Dataloader(self.pathname, img_file_pattern='*.jpg', frame_range=(1, 10))
-            pre_frames = list(loader.preloaded_frames.values())
-            self.show()
-        else:
-            self.close()
-            return
+        loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=(1, max_frame))
+        pre_frames = list(loader.preloaded_frames.values())
             
-        self.label = QLabel("",self)
-        self.label.resize(800,800)
-        self.label.move(0,0)
+        self.label = QLabel(self)
+        self.label.resize(500,500)
+        self.label.move(50,50)
         self.label.show()
 
         self.num_object = []
         self.img = []
 
-        step = 1
         thresholds = get_thresholds()
 
         for i in range(step, len(pre_frames)-step, step):
@@ -144,14 +58,13 @@ class Slideshow(QMainWindow):
             grown = grow(grays[1], binary)
             filtered = filter(grown, thresholds)
 
-            ncands = maximum(measure.label(filtered))
+            ncands = np.amax(measure.label(filtered))
             print(ncands)
 
             img = Image.fromarray(picture[0], mode='RGB')
             qt_img = ImageQt.ImageQt(img)
             
             image = QPixmap.fromImage(qt_img)
-
             self.painterInstance = QPainter(image)
             self.penRectangle = QPen(Qt.green)
             self.penRectangle.setWidth(3)
@@ -161,8 +74,11 @@ class Slideshow(QMainWindow):
                 # draw rectangle on painter
                 self.painterInstance.setPen(self.penRectangle)
                 self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
-
+            
+            self.painterInstance.end()
+            image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
             self.img.append(image)
+
         print("Finished calculations")
         self.timer = QBasicTimer()
         self.step = 0
@@ -210,7 +126,6 @@ class Slideshow(QMainWindow):
         if self.step >= len(self.img):
             self.timer.stop()
             self.step = 0
-            self.painterInstance.end()
             self.graphObjectDetected()
             self.graphScores()
             self.dialog2 = Statistics(self)
@@ -258,5 +173,8 @@ if __name__ == "__main__":
     step = int(sys.argv[3])
 
     app = QApplication(sys.argv)
-    widget = Control()
+    widget = Slideshow()
+    widget.resize(1000,1000)
+    widget.setWindowTitle("Small target tracker")
+    widget.show()
     sys.exit(app.exec())
