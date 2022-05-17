@@ -34,7 +34,13 @@ class Dataloader(object):
         if self.frame_range[0] < full_frame_range[0] or self.frame_range[1] > full_frame_range[1]:
             raise ValueError('Frame range {} is out of range {}'.format(frame_range, full_frame_range))
         
-        self.gt_df = pd.read_csv(gt_file, sep=',', usecols=range(6), names=['frame', 'track_id', 'tl_x', 'tl_y', 'width', 'height'])
+        with open(gt_file) as f:
+            l1 = f.readline()
+            sep = ',' if ',' in l1 else ' '
+            gt_df = pd.read_csv(gt_file, sep=sep, usecols=range(6), 
+                                    names=['frame', 'track_id', 'tl_x', 'tl_y', 'width', 'height'])
+            self.gt_df = gt_df[gt_df.frame.between(*self.frame_range)]
+            
         self.preloaded_frames = {}
         self.preload_frames()
         
@@ -80,8 +86,8 @@ if __name__ == '__main__':
     dataset_path = sys.argv[1].rstrip('/')
 
     # TESTING
-    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg')
-    print(len(dataloader.preloaded_frames))
+    dataloader = Dataloader(f'{dataset_path}/car/028', img_file_pattern='*.jpg')
+    print('Frames', len(dataloader.preloaded_frames))
     
     
     

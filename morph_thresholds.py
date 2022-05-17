@@ -57,12 +57,7 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
   return len(tp_areas), area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std
 
 
-if __name__ == '__main__':
-
-  dataset_path = sys.argv[1].rstrip('/')
-  num_folders = int(sys.argv[2])
-  num_frames = int(sys.argv[3])
-
+def find_thresholds(dataset_path, num_folders, num_frames):
   area_avg, ext_avg, alen_avg, ecc_avg = 0, 0, 0, 0
   area_std, ext_std, alen_std, ecc_std = 0, 0, 0, 0
   total_cands = 0
@@ -97,4 +92,77 @@ if __name__ == '__main__':
 
       total_cands += ncands
 
-  print(area_avg, ext_avg, alen_avg, ecc_avg)
+  print(area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std)
+
+  with open('cue_results.txt', 'w') as f:
+    f.write(f'{num_folders}, {num_frames}, {area_avg}, {area_std}, {ext_avg}, {ext_std}, {alen_avg}, {alen_std}, {ecc_avg}, {ecc_std}')
+
+
+def cue_filtering(binary, range=0.99):
+  with open('cue_results.txt', 'r') as f:
+    area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std = [float(n) for n in f.read().split(',')[2:]] # 17.694700095207864, 6.344815406670817, 0.652458410014255, 0.10566117930359069, 6.437163565738847, 1.5565604896009309, 0.7698992306070194, 0.13094394850836155
+  print(area_avg, ecc_std)
+
+  binary = deepcopy(binary)
+  labeled_image = measure.label(binary, background=0, connectivity=1)
+  blobs = measure.regionprops(labeled_image)
+
+  t1_area = norm.ppf((1-range)/2, loc=area_avg, scale=area_std)
+  t2_area = 2 * area_avg - t1_area
+  t1_ext = norm.ppf((1-range)/2, loc=ext_avg, scale=ext_std)
+  t2_ext = 2 * ext_avg - t1_ext
+  t1_alen = norm.ppf((1-range)/2, loc=alen_avg, scale=alen_std)
+  t2_alen = 2 * alen_avg - t1_alen
+  t1_ecc = norm.ppf((1-range)/2, loc=ecc_avg, scale=ecc_std)
+  t2_ecc = 2 * ecc_avg - t1_ecc
+
+  for blob in blobs:
+    blob_rows, blob_cols = zip(*blob.coords)
+    if blob.area_filled < t1_area or blob.area_filled > t2_area: binary[blob_rows, blob_cols] = 0
+    if blob.extent < t1_ext or blob.extent > t2_ext: binary[blob_rows, blob_cols] = 0
+    if blob.axis_major_length < t1_alen or blob.axis_major_length > t2_alen: binary[blob_rows, blob_cols] = 0
+    if blob.eccentricity < t1_ecc or blob.eccentricity > t2_ecc: binary[blob_rows, blob_cols] = 0
+
+  return binary
+
+
+if __name__ == '__main__':
+
+  dataset_path = sys.argv[1].rstrip('/')
+  num_folders = int(sys.argv[2])
+  num_frames = int(sys.argv[3])
+
+  # find_thresholds(dataset_path, num_folders, num_frames)
+
+  # TESTING
+  loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  preloaded_frames = list(loader.preloaded_frames.values())
+  i0 = 10
+  
+  for i in range(i0, len(preloaded_frames) - i0):
+    frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
+    grays = [color.rgb2gray(f[1]) for f in frames]
+    
+    plt.figure()
+    plt.imshow(grays[1], cmap='gray')
+
+    b = objects(grays)
+    _, ax1 = plt.subplots()
+    ax1.imshow(b, cmap='gray')
+
+    grown = region_growing(grays[1], b)
+    _, ax2 = plt.subplots()
+    ax2.imshow(grown, cmap='gray')
+
+    filtered = cue_filtering(grown)
+    _, ax3 = plt.subplots()
+    ax3.imshow(filtered, cmap='gray')
+
+    for box in frames[1][2]:
+      # ax1.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+      ax3.add_patch(patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor='r', facecolor='none'))
+
+    plt.show(block=True)
+    break
+
+  

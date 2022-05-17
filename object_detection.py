@@ -65,7 +65,7 @@ def region_growing(gray, binary):
       
     t1 = norm.ppf(5e-3, loc=mean, scale=sd)
     t2 = 2 * mean - t1  
-    if t2 - t1 > 0.2: continue
+    if not sd or t2 - t1 > 0.4: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
