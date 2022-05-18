@@ -63,7 +63,7 @@ def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
         A dictionary containing the following metrics: precision, recall, f1-score
     """
     
-    npos = np.shape(gt_bboxes)[0]
+    npos = len(gt_bboxes)
     seen_gts = np.zeros(npos)
     tp = 0
     fp = 0
@@ -76,13 +76,9 @@ def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
                 max_iou = iou
                 gt_idx = i  # index of the ground truth box with the highest IoU
         
-        if max_iou >= iou_threshold:
-            if seen_gts[gt_idx] == 0:   # first time this gt is detected
-                tp += 1
-                seen_gts[gt_idx] = 1    # mark as detected
-            else:
-                # duplicate detection
-                fp += 1
+        if max_iou >= iou_threshold and not seen_gts[gt_idx]:
+            tp += 1
+            seen_gts[gt_idx] = 1
         else:
             fp += 1
 
