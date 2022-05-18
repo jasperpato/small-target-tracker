@@ -8,7 +8,7 @@ from object_detection import objects
 Class to initialise a Kalman Filter class with the necessary vectors
 """
 class KalmanFilter:
-    def __init__(self, init_x, init_y, covar):
+    def __init__(self, init_x, init_y, covar, bbox):
         # Initial mean vector of the state vector. Format : [x, y, v of x, v of y, a of x, a of y]
         self.x = np.array([init_x,init_y,0,0,0,0])
 
@@ -33,6 +33,8 @@ class KalmanFilter:
         # Initial state of P is Q
         self.P = self.Q
 
+        self.bbox = bbox
+
     """
     Predict assumes the change in time is 1 second
     """
@@ -40,7 +42,7 @@ class KalmanFilter:
         self.x = self.F.dot(self.x)
         self.P = self.F.dot(self.P).dot(self.F.T) + self.Q
 
-    def update(self, meas_x, meas_y):
+    def update(self, meas_x, meas_y, bbox):
         z = np.array([meas_x, meas_y])
 
         # Innovation calculation
@@ -54,6 +56,8 @@ class KalmanFilter:
 
         self.x = self.x + K.dot(y)
         self.P = (np.eye(6,dtype=float) - K.dot(self.H)).dot(self.P)
+
+        self.bbox = bbox
 
 #Test to see if state vector and P are updated correctly
 if __name__ == '__main__':

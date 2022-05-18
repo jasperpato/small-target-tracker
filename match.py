@@ -43,9 +43,9 @@ def association(region, tracks, previous_frame):
     if len(region) > len(tracks):
         for r in row:
             if r in psuedo_row:
-                tracks.append(KalmanFilter(region[count].centroid[0], region[count].centroid[1], 0.1))
+                tracks.append(KalmanFilter(region[count].centroid[0], region[count].centroid[1], 0.1,region[count].bbox))
             else:
-                tracks[r].update(region[count].centroid[0], region[count].centroid[1])
+                tracks[r].update(region[count].centroid[0], region[count].centroid[1], region[count].bbox)
             count += 1
     
     # Send additional unassigned tracks to search engine
@@ -57,9 +57,11 @@ def association(region, tracks, previous_frame):
                 tracks[count].predict()
                 bpos = search_previous(previous_frame, tracks[count].x[:2])
                 if bpos is not None:
-                    tracks[count].update(*bpos)
+                    tracks[count].update(*bpos, tracks[count].bbox)
                 else:
                     delete_track.append(count)
+            else:
+                tracks[count].update(region[c].centroid[0], region[c].centroid[1], region[c].bbox)
             count += 1
 
     return delete_track
@@ -107,7 +109,7 @@ if __name__ == "__main__":
         
         if i == step:
             for b in blobs:
-                tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
+                tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1, b.bbox))
         else:
             delete_track = association(blobs, tracks, previous_props)
             new_tracks = []
