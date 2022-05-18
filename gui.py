@@ -54,11 +54,11 @@ class Slideshow(QMainWindow):
         self.title1 = QLabel("<h4>Final statistics</h4>", self)
         self.title1.move(600,125)
 
-        self.stat1 = QLabel("Unmatch Ground Truth",self)
+        self.stat1 = QLabel("Unmatch Ground Truth : 0.00",self)
         self.stat1.adjustSize()
         self.stat1.move(600, 50)
 
-        self.stat1a = QLabel("Tracks changed", self)
+        self.stat1a = QLabel("Tracks changed : 00", self)
         self.stat1a.adjustSize()
         self.stat1a.move(600, 100)
 
@@ -84,6 +84,10 @@ class Slideshow(QMainWindow):
 
         self.num_object = []
         self.img = []
+        self.ug = []
+        self.precision = []
+        self.recall = []
+        self.tc = []
 
         thresholds = get_thresholds()
         tracks = []
@@ -128,11 +132,13 @@ class Slideshow(QMainWindow):
             if i == step:
                 for b in blobs:
                     tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1, b.bbox))
+                self.tc.append(0)
             else:
                 delete_track = association(blobs, tracks, previous_props)
                 new_tracks = []
                 for i in range(len(tracks)):
                     if i not in delete_track: new_tracks.append(tracks[i])
+                self.tc.append(len(tracks)-len(new_tracks))
                 tracks = new_tracks
         
             previous_props = blobs
@@ -146,11 +152,12 @@ class Slideshow(QMainWindow):
                     minr, minc, maxr, maxc = t.bbox
                     self.painterInstance.drawRect(t.x[1]-3, t.x[0]+3, maxc-minc,maxr-minr)
 
+            self.ug.append(1-(len(blobs)/len(pre_frames[i][2])))
             self.painterInstance.end()
 
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
             self.img.append(image)
-
+        
         self.dialog1.close()
         self.graphObjectDetected()
         self.graphScores()
@@ -201,6 +208,10 @@ class Slideshow(QMainWindow):
         self.timer.start(self.delay, self)
         self.label.setPixmap(self.img[self.step])
         self.label.show()
+
+        self.stat1.setText("Unmatch Ground Truth : {}".format(self.ug[self.step]))
+        self.stat1a.setText("Tracks changed : {}".format(self.tc[self.step]))
+        self.show()
         self.step = (self.step + 1) % len(self.img)
     
     def button_clicked(self):
