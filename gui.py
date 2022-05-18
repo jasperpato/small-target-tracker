@@ -124,17 +124,17 @@ class Slideshow(QMainWindow):
             self.penRectangle = QPen(Qt.blue)
             self.penRectangle.setWidth(2)
             self.painterInstance.setPen(self.penRectangle)
-
+            
             if i == step:
                 for b in blobs:
-                    tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
+                    tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1, b.bbox))
             else:
                 delete_track = association(blobs, tracks, previous_props)
                 new_tracks = []
                 for i in range(len(tracks)):
                     if i not in delete_track: new_tracks.append(tracks[i])
                 tracks = new_tracks
-            
+        
             previous_props = blobs
 
             if show_blobs:
@@ -143,7 +143,8 @@ class Slideshow(QMainWindow):
                     self.painterInstance.drawRect(minc,maxr,maxc-minc,maxr-minr)
             else:
                 for t in tracks:
-                    self.painterInstance.drawRect(t.x[1]-3, t.x[0]+3, 6, 6)
+                    minr, minc, maxr, maxc = t.bbox
+                    self.painterInstance.drawRect(t.x[1]-3, t.x[0]+3, maxc-minc,maxr-minr)
 
             self.painterInstance.end()
 
@@ -207,6 +208,7 @@ class Slideshow(QMainWindow):
         for w in running_window:
             w.close()
         self.close()
+
 
 class ProgressBar(QWidget):
     def __init__(self,parent=None):
