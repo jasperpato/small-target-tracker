@@ -40,14 +40,21 @@ class Slideshow(QMainWindow):
         self.label = QLabel(self)
         self.label.resize(500,500)
         self.label.move(50,50)
-        self.label.show()
+
         self.title = QLabel("<h3>Statistics</h3>",self)
         self.title.move(600, 10)
+
+        self.title1 = QLabel("<h4>Live statistics</h4>", self)
+        self.title1.move(600, 30)
+
+        self.title1 = QLabel("<h4>Final statistics</h4>", self)
+        self.title1.move(600,125)
 
         self.stat1 = QLabel("Unmatch Ground Truth",self)
         self.stat1.adjustSize()
         self.stat1.move(600, 50)
-        self.stat1a = QLabel("Change tracks", self)
+
+        self.stat1a = QLabel("Tracks changed", self)
         self.stat1a.adjustSize()
         self.stat1a.move(600, 100)
 
@@ -55,13 +62,17 @@ class Slideshow(QMainWindow):
         self.stat2.adjustSize()
         self.stat2.move(600, 150)
 
-        self.stat3 = QLabel("Recall score",self)
+        self.stat3 = QLabel("Average Recall score",self)
         self.stat3.adjustSize()
         self.stat3.move(600, 200)
 
+        self.stat4 = QLabel("Average F1 score",self)
+        self.stat4.adjustSize()
+        self.stat4.move(600, 250)
+
         self.button = QPushButton(self)
         self.button.setText("Close All")
-        self.button.move(600,250)
+        self.button.move(600,300)
         self.button.clicked.connect(self.button_clicked)
 
         self.dialog1 = ProgressBar()
@@ -98,11 +109,21 @@ class Slideshow(QMainWindow):
             self.penRectangle.setWidth(3)
 
             self.num_object.append(ncands)
-            for box in pre_frames[i][2]:
+
+            blob = measure.regionprops(measure.label(filtered))
+
+            #for box in pre_frames[i][2]:
                 # draw rectangle on painter
-                self.painterInstance.setPen(self.penRectangle)
-                self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
+               # self.painterInstance.setPen(self.penRectangle)
+               # self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
             
+            self.penRectangle = QPen(Qt.blue)
+
+            for b in blob:
+                minr, minc, maxr, maxc = b.bbox
+                self.painterInstance.setPen(self.penRectangle)
+                self.painterInstance.drawRect(minc,maxr,maxc-minc,maxr-minr)
+
             self.painterInstance.end()
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
             self.img.append(image)
