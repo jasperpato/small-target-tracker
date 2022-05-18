@@ -22,7 +22,7 @@ def read_img(frame_no, img_path, gt_df):
 
 
 class Dataloader(object):
-    def __init__(self, path, img_file_pattern='*.jpg', frame_range=None):        
+    def __init__(self, path, img_file_pattern='*.jpg', frame_range=None, preload_frames=True):        
         img_paths = glob(f'{path}/img/{img_file_pattern}', recursive=True)
         gt_file = glob(f'{path}/gt/gt.txt', recursive=True)[0]
         
@@ -42,8 +42,12 @@ class Dataloader(object):
             self.gt_df = gt_df[gt_df.frame.between(*self.frame_range)]
             
         self.preloaded_frames = {}
-        self.preload_frames()
+        if preload_frames:
+            self.preload_frames()
         
+    @property
+    def frames(self):
+        return list(self.frame_paths.keys())
 
     def preload_frames(self):
         start_frame, end_frame = self.frame_range
@@ -54,12 +58,10 @@ class Dataloader(object):
                 self.preloaded_frames[frame_no] = read_img(frame_no, img_path, self.gt_df)
             frame_no += 1
     
-    
     def get_full_frame_range(self):
         frames = self.frame_paths.keys()
         return (min(frames), max(frames))
       
-
     def __call__(self, frame_no):
         if frame_no in self.preloaded_frames:
             return self.preloaded_frames.get(frame_no)
@@ -69,13 +71,11 @@ class Dataloader(object):
         else:
             raise ValueError('Frame {} could not be found'.format(frame_no))
         
-    
     def __iter__(self):
         frames = [f for f in self.frame_paths.keys() if f >= self.frame_range[0] and f <= self.frame_range[1]]
         self.frame_iterator = iter(sorted(frames))
         return self
             
-
     def __next__(self):
         frame_no = next(self.frame_iterator)
         return self.__call__(frame_no)
