@@ -7,6 +7,8 @@ from copy import deepcopy
 from scipy.stats import norm
 from dataparser import Dataloader
 from skimage import measure, color, filters
+
+from evaluation import *
   
 
 def objects(grays):
@@ -45,6 +47,7 @@ def grow(gray, binary, **kwargs):
   Implement a region growing function that is applied at the centroids of candidate clusters.
   '''
   if kwargs.get('copy', False): binary = deepcopy(binary)
+  gray = filters.unsharp_mask(gray, radius=2.0, amount=3.0)
   height, width = gray.shape
   blobs = measure.regionprops(
           measure.label(binary, background=0, connectivity=1))
@@ -62,8 +65,9 @@ def grow(gray, binary, **kwargs):
     sd = np.std(blob_grays)
     if not sd: continue
       
-    t1 = norm.ppf(0.05, loc=mean, scale=sd)
+    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
     t2 = 2 * mean - t1  
+    if t2 - t1 > 0.5: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
@@ -91,15 +95,19 @@ def filter(binary, thresholds, **kwargs):
   for blob in blobs:
     blob_rows, blob_cols = zip(*blob.coords)
 
-    t1_area, t2_area = thresholds['area'][0], thresholds['area'][1]
-    t1_ext, t2_ext = thresholds['ext'][0], thresholds['ext'][1]
-    t1_alen, t2_alen = thresholds['alen'][0], thresholds['alen'][1]
-    t1_ecc, t2_ecc = thresholds['ecc'][0], thresholds['ecc'][1]
+    t1_area, t2_area = thresholds['area']
+    t1_ext, t2_ext = thresholds['ext']
+    t1_alen, t2_alen = thresholds['alen']
+    t1_ecc, t2_ecc = thresholds['ecc']
 
-    if blob.area_filled < t1_area or blob.area_filled > t2_area: binary[blob_rows, blob_cols] = 0
-    if blob.extent < t1_ext or blob.extent > t2_ext: binary[blob_rows, blob_cols] = 0
-    if blob.axis_major_length < t1_alen or blob.axis_major_length > t2_alen: binary[blob_rows, blob_cols] = 0
-    if blob.eccentricity < t1_ecc or blob.eccentricity > t2_ecc: binary[blob_rows, blob_cols] = 0
+    if blob.area_filled < t1_area or blob.area_filled > t2_area: 
+      binary[blob_rows, blob_cols] = 0
+    if blob.extent < t1_ext or blob.extent > t2_ext: 
+      binary[blob_rows, blob_cols] = 0
+    if blob.axis_major_length < t1_alen or blob.axis_major_length > t2_alen: 
+      binary[blob_rows, blob_cols] = 0
+    if blob.eccentricity < t1_ecc or blob.eccentricity > t2_ecc: 
+      binary[blob_rows, blob_cols] = 0
  
   return binary
 
@@ -111,7 +119,7 @@ def get_thresholds():
   '''
 
   thresholds = { 'area': (0,0), 'ext': (0,0), 'alen': (0,0), 'ecc': (0,0), }
-  with open('results/cue_thresholds_backup.txt', 'r') as f:
+  with open('results/cue_thresholds.txt', 'r') as f:
     data = [float(n) for n in f.read().split(',')]
     thresholds['area'] = (data[0], data[1])
     thresholds['ext'] = (data[2], data[3])
@@ -126,40 +134,50 @@ if __name__ == '__main__':
   dataset_path = sys.argv[index].rstrip('/')
 
   # TESTING
-  loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  loader = Dataloader(f'{dataset_path}/car/003', img_file_pattern='*.jpg', frame_range=(1, 100))
   preloaded_frames = list(loader.preloaded_frames.values())
   i0 = 10
 
   frames = [preloaded_frames[0+j*i0] for j in (-1,0,1)]
-  grays = [color.rgb2gray(f[1]) for f in frames]
-  ctr_gray = deepcopy(grays[1])
-  ctr_gray = filters.unsharp_mask(ctr_gray, radius=2.0, amount=3.0)
+  ctr_frame = frames[1]
+  grays = [color.rgb2gray(im) for _, im, _ in frames]
+  ctr_gray = grays[1]
 
   plt.figure("Gray Image")
   plt.imshow(ctr_gray, cmap='gray')
 
-  candidates = objects(grays)
+  binary = objects(grays)
   _, ax1 = plt.subplots()
   ax1.set_title("Candidate Objects Detection")
-  ax1.imshow(candidates, cmap='gray')
+  ax1.imshow(binary, cmap='gray')
 
-  grown_candidates = grow(ctr_gray, candidates)
+  grown_binary = grow(ctr_gray, binary)
   _, ax2 = plt.subplots()
   ax2.set_title("Candidate Object Growing")
-  ax2.imshow(grown_candidates, cmap='gray')
+  ax2.imshow(binary, cmap='gray')
   
-  filtered_candidates = filter(grown_candidates, get_thresholds())
+  filtered_binary = filter(grown_binary, get_thresholds())
   _, ax3 = plt.subplots()
   ax3.set_title("Candidate Match Discrimation")
-  ax3.imshow(filtered_candidates, cmap='gray')
+  ax3.imshow(filtered_binary, cmap='gray')
 
   if sys.argv[1] == '--boxes':
-    for box in frames[1][2]:
-      ax2.add_patch(patches.Rectangle((box[0] - 0.5, box[1] - 0.5), 
-                                      box[2], box[3], 
+    for gt_box in ctr_frame[2]:
+      ax2.add_patch(patches.Rectangle((gt_box[0] - 0.5, gt_box[1] - 0.5), 
+                                      gt_box[2], gt_box[3], 
                                       linewidth=1, edgecolor='r', facecolor='none'))
-      ax3.add_patch(patches.Rectangle((box[0] - 0.5, box[1] - 0.5),
-                                      box[2], box[3], 
+      ax3.add_patch(patches.Rectangle((gt_box[0] - 0.5, gt_box[1] - 0.5),
+                                      gt_box[2], gt_box[3], 
                                       linewidth=1, edgecolor='r', facecolor='none'))
-      
+  
+  candidate_clusters = measure.label(filtered_binary, background=0, connectivity=1)
+  pred_bboxes = [Box(xtl=blob.bbox[1], ytl=blob.bbox[0],
+                    w=blob.bbox[3] - blob.bbox[1],
+                    h=blob.bbox[2] - blob.bbox[0]) for blob in measure.regionprops(candidate_clusters)]
+  gt_bboxes = [Box(*gt_box) for gt_box in ctr_frame[2]]
+  
+  print(f'==============================')
+  print(f'EVALUATION RESULTS {evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7)}')
+  print(f'==============================')
+  
   plt.show(block=True)
