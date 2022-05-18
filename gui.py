@@ -112,18 +112,17 @@ class Slideshow(QMainWindow):
 
             blob = measure.regionprops(measure.label(filtered))
 
-            #for box in pre_frames[i][2]:
+            for box in pre_frames[i][2]:
                 # draw rectangle on painter
-               # self.painterInstance.setPen(self.penRectangle)
-               # self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
+                self.painterInstance.setPen(self.penRectangle)
+                self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
             
-            self.penRectangle = QPen(Qt.blue)
-            self.penRectangle.setWidth(5)
+            self.penRectangle = QPen(Qt.red)
 
             for b in blob:
                 minr, minc, maxr, maxc = b.bbox
                 self.painterInstance.setPen(self.penRectangle)
-                self.painterInstance.drawRect(minc,maxr,maxc-minc,maxr-minr)
+                self.painterInstance.drawRect(minc,minr,maxc-minc,maxr-minr)
 
             self.painterInstance.end()
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
