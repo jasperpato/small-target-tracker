@@ -10,7 +10,7 @@ from dataparser import Dataloader
 from skimage.measure import label, regionprops
 
 
-def association(region, tracks, previous_frame, current_frame):
+def association(region, tracks, previous_frame):
     psuedo_col = []
     psuedo_row = []
     previous_KF = tracks 
@@ -35,7 +35,7 @@ def association(region, tracks, previous_frame, current_frame):
             point2 = np.array((region[j].centroid[0],region[j].centroid[1]))
             cost[i, j] = np.linalg.norm(point1 - point2)
 
-    print(cost)
+    # print(cost)
     row , col = linear_sum_assignment(cost)
     count = 0
 
@@ -97,8 +97,6 @@ if __name__ == "__main__":
         frames = (preloaded_frames[i-step], preloaded_frames[i], preloaded_frames[i+step])
         grays = [color.rgb2gray(f[1]) for f in frames]
 
-        current = grays
-
         b = objects(grays)
         g = grow(grays[1], b)
         f = filter(b, thresholds)
@@ -111,7 +109,7 @@ if __name__ == "__main__":
             for b in blobs:
                 tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
         else:
-            delete_track = association(blobs, tracks, previous_props, current)
+            delete_track = association(blobs, tracks, previous_props)
             new_tracks = []
             for i in range(len(tracks)):
                 if i not in delete_track: new_tracks.append(tracks[i])
