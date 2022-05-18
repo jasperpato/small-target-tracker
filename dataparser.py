@@ -47,7 +47,7 @@ class Dataloader(object):
         
     @property
     def frames(self):
-        return list(self.frame_paths.keys())
+        return list(sorted(self.frame_paths.keys()))
 
     def preload_frames(self):
         start_frame, end_frame = self.frame_range
