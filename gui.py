@@ -118,6 +118,7 @@ class Slideshow(QMainWindow):
                # self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
             
             self.penRectangle = QPen(Qt.blue)
+            self.penRectangle.setWidth(5)
 
             for b in blob:
                 minr, minc, maxr, maxc = b.bbox
