@@ -134,11 +134,11 @@ if __name__ == '__main__':
   dataset_path = sys.argv[index].rstrip('/')
 
   # TESTING
-  loader = Dataloader(f'{dataset_path}/car/003', img_file_pattern='*.jpg', frame_range=(1, 100))
+  loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
   preloaded_frames = list(loader.preloaded_frames.values())
   i0 = 10
 
-  frames = [preloaded_frames[0+j*i0] for j in (-1,0,1)]
+  frames = [preloaded_frames[10+j*i0] for j in (-1,0,1)]
   ctr_frame = frames[1]
   grays = [color.rgb2gray(im) for _, im, _ in frames]
   ctr_gray = grays[1]
@@ -154,7 +154,7 @@ if __name__ == '__main__':
   grown_binary = grow(ctr_gray, binary)
   _, ax2 = plt.subplots()
   ax2.set_title("Candidate Object Growing")
-  ax2.imshow(binary, cmap='gray')
+  ax2.imshow(grown_binary, cmap='gray')
   
   filtered_binary = filter(grown_binary, get_thresholds())
   _, ax3 = plt.subplots()
