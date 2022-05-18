@@ -9,10 +9,12 @@ from object_detection import objects, grow
 from evaluation import intersection_over_union, Box
 
 
-def morph_cues(binary, gt_boxes, iou_threshold=0.5):
+def morph_cues(binary, gt_boxes, **kwargs):
   '''
   Returns morphological feature averages and stds for true positives in one image
   '''
+
+  iou_threshold = kwargs.get('iou_threshold', 0.7)
   
   labeled_image = measure.label(binary, background=0, connectivity=1)
   blobs = measure.regionprops(labeled_image)
@@ -48,10 +50,15 @@ def morph_cues(binary, gt_boxes, iou_threshold=0.5):
   return len(tp_areas), area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std
 
 
-def find_thresholds(dataset_path, num_folders, num_frames, iou_threshold=0.5, prob_range=0.9):
+def find_thresholds(dataset_path, num_folders, num_frames, **kwargs): # iou_threshold=0.5, prob_range=0.9):
   '''
   Loops through folders to find global averages of morph cues
   '''
+
+  iou_threshold = kwargs.get('iou_threshold', 0.7)
+  prob_range = kwargs.get('prob_range', 0.9)
+  step = kwargs.get('step', 5)
+
   area_avg, ext_avg, alen_avg, ecc_avg = 0, 0, 0, 0
   area_std, ext_std, alen_std, ecc_std = 0, 0, 0, 0
   total_cands = 0
@@ -68,9 +75,9 @@ def find_thresholds(dataset_path, num_folders, num_frames, iou_threshold=0.5, pr
       grays = [ color.rgb2gray(f[1]) for f in (frames[i-step], frames[i], frames[i+step]) ]
         
       binary = objects(grays)
-      # grown = grow(grays[1], binary)
+      if kwargs.get('g', False): binary = grow(grays[1], binary)
 
-      ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, frames[i][2], iou_threshold)
+      ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = morph_cues(binary, frames[i][2], iou_threshold=iou_threshold)
 
       # cumulative average
       area_avg = (area_avg * total_cands + ar_avg * ncands) / (total_cands + ncands)
@@ -107,6 +114,7 @@ if __name__ == '__main__':
   path = sys.argv[1]
   folders, frames = int(sys.argv[2]), int(sys.argv[3])
   iou_threshold, prob_range = float(sys.argv[4]), float(sys.argv[5])
+  g = len(sys.argv) > 6
 
-  find_thresholds(path, folders, frames, iou_threshold, prob_range)
+  find_thresholds(path, folders, frames, iou_threshold=iou_threshold, prob_range=prob_range, g=g)
 
