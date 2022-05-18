@@ -17,14 +17,15 @@ def association(region, tracks, previous_frame, current_frame):
     changed_track = 0 # For GUI statistic
     
     if len(region) > len(tracks):
-        for i in range(len(region), len(region) + (len(region) - len(tracks))):
+        for i in range(len(region), len(region) + len(region) - len(tracks)):
             psuedo_row.append(i-(len(region) - len(tracks)))
 
     if len(tracks) > len(region):
-        for i in range(len(tracks), len(tracks) + (len(tracks) - len(region))):
+        for i in range(len(tracks), len(tracks) + len(tracks) - len(region)):
             psuedo_col.append(i-(len(tracks) - len(region)))
 
-    cost = np.full((len(tracks) + len(psuedo_row), len(region) + len(psuedo_col)), 1000)
+    cost = np.full((len(tracks) + len(psuedo_row), len(region) + len(psuedo_col)), 1000000)
+    
     # Create cost matrix
     for i in range(len(tracks)):
         tracks[i].predict()
@@ -42,57 +43,56 @@ def association(region, tracks, previous_frame, current_frame):
     if len(region) > len(tracks):
         for r in row:
             if r in psuedo_row:
-                tracks.append(KalmanFilter(region[count].centroid[0], region[count].centroid[1],0.1))
+                tracks.append(KalmanFilter(region[count].centroid[0], region[count].centroid[1], 0.1))
             else:
                 tracks[r].update(region[count].centroid[0], region[count].centroid[1])
             count += 1
     
     # Send additional unassigned tracks to search engine
     delete_track = []
+    count = 0
     if len(tracks) > len(region):
         for c in col:
             if c in psuedo_col:
-                search_nearest(previous_frame, current_frame, previous_KF, count)
-                """
-                If true:
-                    tracks[count] = KF(tracks[count].x[0], tracks[count].x[1], 0.1) # assuming object stopped
+                tracks[count].predict()
+                bpos = search_previous(previous_frame, tracks[count].x[:2])
+                if bpos is not None:
+                    tracks[count].update(*bpos)
                 else:
-                    delete_track.append(count) # Delete this row later so that it does not mess up the other association
-                
-                """
-            else:
-                tracks[count].update(region[c].centroid[0], region[c].centroid[1])
+                    delete_track.append(count)
             count += 1
 
-        if len(delete_track) != 0:
-            temp = []
-            for i in len(tracks):
-                if i not in delete_track:
-                    temp.append(tracks[i])
-            tracks = temp
+    return delete_track
 
-    return changed_track
-
-def search_nearest(previous_frame, current_frame, previous_KF, row):
-    current_KF = previous_KF[row].predict()
+def search_previous(previous_props, pos):
     """
     Search local area (Havent found algorithm to do it)
     return True or False
     """
+    min_dist = 999999
+    min_cent = None
+    for blob in previous_props:
+        bpos = np.array([blob.centroid[1], blob.centroid[0]])
+        d = np.linalg.norm(bpos - np.array(pos))
+        if d < min_dist and d < 100:
+            min_dist = d
+            min_cent = bpos
+    return min_cent
     
-    pass
 
 if __name__ == "__main__":
     index = 1 if len(sys.argv) == 2 else 2
     dataset_path = sys.argv[index].rstrip('/')
 
     # TESTING
-    loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 50))
+    loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 10))
     preloaded_frames = list(loader.preloaded_frames.values())
     step = 1
     thresholds = get_thresholds()
 
     tracks = []
+    previous_props = None
+
     for i in range(step, len(preloaded_frames)-step, step):
         frames = (preloaded_frames[i-step], preloaded_frames[i], preloaded_frames[i+step])
         grays = [color.rgb2gray(f[1]) for f in frames]
@@ -111,9 +111,13 @@ if __name__ == "__main__":
             for b in blobs:
                 tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
         else:
-            association(blobs, tracks, previous, current)
+            delete_track = association(blobs, tracks, previous_props, current)
+            new_tracks = []
+            for i in range(len(tracks)):
+                if i not in delete_track: new_tracks.append(tracks[i])
+            tracks = new_tracks
         
-        previous = current
+        previous_props = blobs
         
         print('Number of tracks : {}'.format(len(tracks)))
     

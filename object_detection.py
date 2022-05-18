@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 from copy import deepcopy
 from scipy.stats import norm
 from dataparser import Dataloader
-from skimage import measure, color, filters, exposure
+from skimage import measure, color, filters
   
 
 def objects(grays):
