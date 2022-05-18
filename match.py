@@ -87,7 +87,7 @@ if __name__ == "__main__":
     dataset_path = sys.argv[index].rstrip('/')
 
     # TESTING
-    loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 50))
+    loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 10))
     preloaded_frames = list(loader.preloaded_frames.values())
     step = 1
     thresholds = get_thresholds()
