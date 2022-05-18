@@ -3,22 +3,25 @@ import numpy as np
 
 from dataparser import Dataloader
 from object_detection import get_thresholds, objects, grow, filter
+from kalman_filter import KalmanFilter
+from match import association
 
 from PySide6.QtCore import Qt, Slot, QBasicTimer, QStringListModel
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QLineEdit, QMessageBox, QProgressBar, QLabel, QGridLayout, QSizePolicy, QFileDialog
 from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 import pyqtgraph as pg
-from skimage import measure, color
 
-from numpy import maximum
-from skimage import measure
+from skimage.measure import label, regionprops
+from skimage.color import rgb2gray
 
 running_window = []
 dataset_path = None
 max_frame = None
 step = None
 p_bar = None
+show_blobs = False
+
 '''
 python3 gui.py {....../car/{Pick a number}} {Number of images to load} {Steps between frames}
 '''
@@ -31,6 +34,7 @@ class Slideshow(QMainWindow):
         global max_frame
         global step
         global p_bar
+        global show_blobs
 
         running_window.append(self)
         
@@ -82,6 +86,8 @@ class Slideshow(QMainWindow):
         self.img = []
 
         thresholds = get_thresholds()
+        tracks = []
+        previous_props = None
 
         for i in range(step, len(pre_frames)-step, step):
             # For progress bar
@@ -92,13 +98,16 @@ class Slideshow(QMainWindow):
 
             # Main application
             picture = [f[1] for f in (pre_frames[i-step], pre_frames[i], pre_frames[i+step])]
-            grays = [ color.rgb2gray(p) for p in picture ]
+            grays = [ rgb2gray(p) for p in picture ]
                 
             binary = objects(grays)
             grown = grow(grays[1], binary, copy = True)
             filtered = filter(grown, thresholds, copy = True)
 
-            ncands = np.amax(measure.label(filtered))
+            label_f = label(filtered)
+            blobs = regionprops(label_f)
+            ncands = np.max(label_f)
+            self.num_object.append(ncands)
 
             img = Image.fromarray(picture[0], mode='RGB')
             qt_img = ImageQt.ImageQt(img)
@@ -106,29 +115,44 @@ class Slideshow(QMainWindow):
             image = QPixmap.fromImage(qt_img)
             self.painterInstance = QPainter(image)
             self.penRectangle = QPen(Qt.green)
-            self.penRectangle.setWidth(3)
-
-            self.num_object.append(ncands)
-
-            blob = measure.regionprops(measure.label(filtered))
+            self.penRectangle.setWidth(2)
+            self.painterInstance.setPen(self.penRectangle)
 
             for box in pre_frames[i][2]:
-                # draw rectangle on painter
-                self.painterInstance.setPen(self.penRectangle)
-                self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
+               self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
             
-            self.penRectangle = QPen(Qt.red)
+            self.penRectangle = QPen(Qt.blue)
+            self.penRectangle.setWidth(2)
+            self.painterInstance.setPen(self.penRectangle)
 
-            for b in blob:
-                minr, minc, maxr, maxc = b.bbox
-                self.painterInstance.setPen(self.penRectangle)
-                self.painterInstance.drawRect(minc,minr,maxc-minc,maxr-minr)
+            if i == step:
+                for b in blobs:
+                    tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1))
+            else:
+                delete_track = association(blobs, tracks, previous_props)
+                new_tracks = []
+                for i in range(len(tracks)):
+                    if i not in delete_track: new_tracks.append(tracks[i])
+                tracks = new_tracks
+            
+            previous_props = blobs
+
+            if show_blobs:
+                for b in blobs:
+                    minr, minc, maxr, maxc = b.bbox
+                    self.painterInstance.drawRect(minc,maxr,maxc-minc,maxr-minr)
+            else:
+                for t in tracks:
+                    self.painterInstance.drawRect(t.x[1]-3, t.x[0]+3, 6, 6)
 
             self.painterInstance.end()
+
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
             self.img.append(image)
 
         self.dialog1.close()
+        self.graphObjectDetected()
+        self.graphScores()
 
         self.timer = QBasicTimer()
         self.step = 0
@@ -172,17 +196,11 @@ class Slideshow(QMainWindow):
 
         running_window.append(self.graphWidget)
     
-    def timerEvent(self, e=None):
-        if self.step >= len(self.img):
-            self.timer.stop()
-            self.step = 0
-            self.graphObjectDetected()
-            self.graphScores()
-            return 
+    def timerEvent(self, e=None):   
         self.timer.start(self.delay, self)
         self.label.setPixmap(self.img[self.step])
         self.label.show()
-        self.step += 1
+        self.step = (self.step + 1) % len(self.img)
     
     def button_clicked(self):
         global running_window
@@ -208,6 +226,7 @@ if __name__ == "__main__":
     dataset_path = sys.argv[1].rstrip('/')
     max_frame = int(sys.argv[2])
     step = int(sys.argv[3])
+    show_blobs = len(sys.argv) > 4
 
     app = QApplication(sys.argv)
     widget = Slideshow()
