@@ -9,6 +9,8 @@ class Box:
         self.ytl = ytl
         self.xbr = w + xtl - 1
         self.ybr = h + ytl - 1
+        self.w = w
+        self.h = h
     
     @property    
     def area(self):
