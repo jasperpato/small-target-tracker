@@ -1,5 +1,4 @@
 import os
-import sys
 import numpy as np
 import argparse
 
@@ -8,7 +7,7 @@ from skimage import measure, color
 
 from dataparser import Dataloader
 from object_detection import objects, grow
-from evaluation import intersection_over_union, Box
+from evaluation import *
 
 
 parser = argparse.ArgumentParser(description='Find thresholds for cue detection')
@@ -31,35 +30,30 @@ def get_morph_cues(binary, gt_boxes, **kwargs):
   
   labeled_image = measure.label(binary, background=0, connectivity=1)
   blobs = measure.regionprops(labeled_image)
+  morph_stats = np.zeros((len(blobs), 4)) # area, extent, a_length, eccentricity
   npos = len(gt_boxes)
   seen_gts = np.zeros(npos)
-  tp_areas, tp_extents, tp_a_lengths, tp_eccentricities = [], [], [], []
-
-  for blob in blobs:
+  
+  for i, blob in enumerate(blobs):
     pred_box = Box(xtl=blob.bbox[1], ytl=blob.bbox[0],
                    w=blob.bbox[3] - blob.bbox[1],
                    h=blob.bbox[2] - blob.bbox[0])
     max_iou = 0.0
-    for i in range(npos):
-      gt_box = Box(*gt_boxes[i])
+    
+    for j in range(npos):
+      gt_box = Box(*gt_boxes[j])
       iou = intersection_over_union(pred_box, gt_box)
       if iou > max_iou:
         max_iou = iou
-        gt_idx = i # index of the ground truth box with the highest IoU
+        gt_idx = j # index of the ground truth box with the highest IoU
 
-    if max_iou >= iou_threshold and seen_gts[gt_idx] == 0:
+    if max_iou >= iou_threshold and not seen_gts[gt_idx]:
       seen_gts[gt_idx] = 1 # mark as detected
-      tp_areas.append(min(blob.area_filled, gt_box.area)) # if blob is larger than gt box, take gt box area
-      tp_extents.append(blob.area_filled / blob.area_bbox)
-      tp_a_lengths.append(blob.axis_major_length)
-      tp_eccentricities.append(blob.eccentricity)
-
-  area_avg, area_std = np.mean(tp_areas) if tp_areas else -1, np.std(tp_areas) if tp_areas else -1    # what does the -1 do?
-  ext_avg, ext_std = np.mean(tp_extents) if tp_extents else -1, np.std(tp_extents) if tp_extents else -1
-  alen_avg, alen_std = np.mean(tp_a_lengths) if tp_a_lengths else -1, np.std(tp_a_lengths) if tp_a_lengths else -1
-  ecc_avg, ecc_std = np.mean(tp_eccentricities) if tp_eccentricities else -1, np.std(tp_eccentricities) if tp_eccentricities else -1
-
-  return len(tp_areas), area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std
+      morph_stats[i, :] = [min(blob.area_filled, gt_box.area), # if area of blob > gt area, use gt area
+                            blob.area_filled / blob.area_bbox, 
+                            blob.axis_major_length, 
+                            blob.eccentricity]
+  return morph_stats[np.all(morph_stats, axis=1)]
 
 
 def find_detection_stats(dataset_path, **kwargs):
@@ -70,43 +64,29 @@ def find_detection_stats(dataset_path, **kwargs):
   iou_threshold = kwargs.get('iou_threshold', 0.7)
   step = kwargs.get('step', 10)
   num_folders = kwargs.get('num_folders', -1) # -1 means all folders
-
-  area_avg, ext_avg, alen_avg, ecc_avg = 0, 0, 0, 0
-  area_std, ext_std, alen_std, ecc_std = 0, 0, 0, 0
-  total_cands = 0
+  aggregate_morph_stats = np.array([]).reshape(0, 4)
 
   for folder in os.listdir(f'{dataset_path}/car')[:num_folders]:
     print(f'---------- Folder {folder} ------------')
-    dataloader = Dataloader(f'{dataset_path}/car/{folder}', img_file_pattern='*.jpg')
+    dataloader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg')
     frame_nums = dataloader.frames
-
+    
     for i in range(step, len(frame_nums) - step, step):
       print(f'Progress: {(i - step) / (len(frame_nums) - step) * 100:.2f} %', end='\r')
       f0, f1, f2 = [dataloader(frame_nums[i+j*step]) for j in (-1, 0, 1)]
       grays = [color.rgb2gray(im) for _, im, _ in (f0, f1, f2)]
 
       binary = objects(grays)
-      binary = grow(grays[1], binary)
-      ncands, ar_avg, ar_std, ex_avg, ex_std, al_avg, al_std, ec_avg, ec_std = \
-        get_morph_cues(binary, f1[2], iou_threshold=iou_threshold)
+      grown_binary = grow(grays[1], binary)
+      morph_stats = get_morph_cues(grown_binary, f1[2], iou_threshold=iou_threshold)
+      aggregate_morph_stats = np.concatenate((aggregate_morph_stats, morph_stats), axis=0)
         
-      if ncands > 0:
-        # cumulative average
-        area_avg = (area_avg * total_cands + ar_avg * ncands) / (total_cands + ncands)
-        ext_avg = (ext_avg * total_cands + ex_avg * ncands) / (total_cands + ncands)
-        alen_avg = (alen_avg * total_cands + al_avg * ncands) / (total_cands + ncands)
-        ecc_avg = (ecc_avg * total_cands + ec_avg * ncands) / (total_cands + ncands)
-
-        # cumulative sd
-        area_std = ((area_std ** 2 * total_cands + ar_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
-        ext_std = ((ext_std ** 2 * total_cands + ex_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
-        alen_std = ((alen_std ** 2 * total_cands + al_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
-        ecc_std = ((ecc_std ** 2 * total_cands + ec_std ** 2 * ncands) / (total_cands + ncands)) ** 0.5
-        
-      total_cands += ncands
-
+  ar_mean, ext_mean, alen_mean, ecc_mean = np.mean(aggregate_morph_stats, axis=0)
+  ar_std, ext_std, alen_std, ecc_std = np.std(aggregate_morph_stats, axis=0)
+  
+  print('Save morph cue statistics to results/cue_stats.txt')
   with open('results/cue_results.txt', 'w') as f:
-    f.write(f'{area_avg}, {area_std}, {ext_avg}, {ext_std}, {alen_avg}, {alen_std}, {ecc_avg}, {ecc_std}')
+    f.write(f'{ar_mean}, {ar_std}, {ext_mean}, {ext_std}, {alen_mean}, {alen_std}, {ecc_mean}, {ecc_std}')
     
 
 def find_thresholds(prob_range=0.9):
@@ -117,7 +97,7 @@ def find_thresholds(prob_range=0.9):
   
   with open('results/cue_results.txt', 'r') as f:
     area_avg, area_std, ext_avg, ext_std, alen_avg, alen_std, ecc_avg, ecc_std = \
-      [float(n) for n in f.read().split(',')[2:]]
+      [float(n) for n in f.read().split(',')]
 
   t1_area = norm.ppf((1-prob_range)/2, loc=area_avg, scale=area_std)
   t2_area = 2 * area_avg - t1_area
@@ -128,6 +108,7 @@ def find_thresholds(prob_range=0.9):
   t1_ecc = norm.ppf((1-prob_range)/2, loc=ecc_avg, scale=ecc_std)
   t2_ecc = 2 * ecc_avg - t1_ecc
 
+  print('Save morph cue thresholds to results/cue_thresholds.txt')
   with open('results/cue_thresholds.txt', 'w') as f:
     f.write(f'{t1_area}, {t2_area}, {t1_ext}, {t2_ext}, {t1_alen}, {t2_alen}, {t1_ecc}, {t2_ecc}')
 
@@ -139,4 +120,3 @@ if __name__ == '__main__':
                          step=args.step, 
                          num_folders=args.num_folders)
   find_thresholds(args.prob_range)
-

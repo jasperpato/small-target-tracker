@@ -1,46 +1,78 @@
 import sys
+import argparse
+from matplotlib.pyplot import show
 import numpy as np
+import pyqtgraph as pg
 
 from dataparser import Dataloader
 from object_detection import get_thresholds, objects, grow, filter
 from kalman_filter import KalmanFilter
 from match import association
+from evaluation import *
 
 from PySide6.QtCore import Qt, Slot, QBasicTimer, QStringListModel
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QLineEdit, QMessageBox, QProgressBar, QLabel, QGridLayout, QSizePolicy, QFileDialog
 from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
-import pyqtgraph as pg
 
-from skimage.measure import label, regionprops
-from skimage.color import rgb2gray
+from skimage import measure
+from skimage import color
 
-running_window = []
-dataset_path = None
-max_frame = None
-step = None
-p_bar = None
-show_blobs = False
 
-'''
-python3 gui.py {....../car/{Pick a number}} {Number of images to load} {Steps between frames}
-'''
+parser = argparse.ArgumentParser(description='Find thresholds for cue detection')
+parser.add_argument('--dataset_path', type=str, required=True, help='Path to the VISO/mot/car/{frame_no} dataset')
+parser.add_argument('--show_blobs', action='store_true', default=False, help='Show blobs instead of tracks')
+parser.add_argument('--step', type=int, default=10, help='Interframe difference to use for cue detection')
+parser.add_argument('--min_frame', type=int, default=1, help='Minimum frame number to use.')
+parser.add_argument('--max_frame', type=int, default=1, help='Maximum frame number to use. -1 selects up to the highest frame number')
+
+running_windows = []
+
+MAX_FRAME = None
+STEP = None
+
 
 class Slideshow(QMainWindow):
-    def __init__(self, parent = None):
+    def __init__(self, dataset_path, show_blobs=False, parent=None, frame_range=(1, -1)):
         super(Slideshow, self).__init__(parent)
-        global running_window
-        global dataset_path
-        global max_frame
-        global step
-        global p_bar
-        global show_blobs
-
-        running_window.append(self)
+        running_windows.append(self)
+        self.initSlideShow()
         
-        loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=(1, max_frame))
-        pre_frames = list(loader.preloaded_frames.values())
+        self.num_detected = []
+        self.images = []
+        self.morph_thresholds = get_thresholds()
+        self.tracks = []
+        self.previous_cues = None
+        
+        loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
+        frame_nums = loader.frames
+        nframes = len(frame_nums)
+
+        for i in range(step, nframes - step, step):
+            self.pbar.setValue(int(round((i - step) / (nframes - step) * 100)))
+            QApplication.processEvents()
             
+            f0, f1, f2 = [loader(frame_nums[i+j*step]) for j in (-1, 0, 1)]
+            img_arr = Image.fromarray(f1[1], mode='RGB')
+            image = QPixmap.fromImage(ImageQt.ImageQt(img_arr)).scaled(
+                500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
+            self.images.append(image)
+            
+            # Main algorithm
+            pred_bboxes, gt_bboxes = self.processFrame(loader, (f0, f1, f2), is_start_frame=i==step, 
+                                                       show_blobs=show_blobs)
+            
+            # Draw bounding boxes
+            self.painterInstance = QPainter(image)
+            self.drawBoundingBoxes(pred_bboxes, gt_bboxes)
+            
+        self.dialog1.close()
+        self.timer = QBasicTimer()
+        self.current_frame = 0
+        self.timerEvent(delay=1000)
+        
+        
+    def initSlideShow(self):
         self.label = QLabel(self)
         self.label.resize(500,500)
         self.label.move(50,50)
@@ -78,172 +110,132 @@ class Slideshow(QMainWindow):
         self.button.setText("Close All")
         self.button.move(600,300)
         self.button.clicked.connect(self.button_clicked)
-
+        
         self.dialog1 = ProgressBar()
-        self.pbar = p_bar
-
-        self.num_object = []
-        self.img = []
-        self.ug = []
-        self.precision = []
-        self.recall = []
-        self.tc = []
-
-        thresholds = get_thresholds()
-        tracks = []
-        previous_props = None
-
-        for i in range(step, len(pre_frames)-step, step):
-            # For progress bar
-            value = self.pbar.value()
-            value = int(round(((i+1)/(len(pre_frames)-step))*100))
-            self.pbar.setValue(value)
-            QApplication.processEvents()
-
-            # Main application
-            picture = [f[1] for f in (pre_frames[i-step], pre_frames[i], pre_frames[i+step])]
-            grays = [ rgb2gray(p) for p in picture ]
-                
-            binary = objects(grays)
-            grown = grow(grays[1], binary, copy = True)
-            filtered = filter(grown, thresholds, copy = True)
-
-            label_f = label(filtered)
-            blobs = regionprops(label_f)
-            ncands = np.max(label_f)
-            self.num_object.append(ncands)
-
-            img = Image.fromarray(picture[0], mode='RGB')
-            qt_img = ImageQt.ImageQt(img)
-            
-            image = QPixmap.fromImage(qt_img)
-            self.painterInstance = QPainter(image)
-            self.penRectangle = QPen(Qt.green)
-            self.penRectangle.setWidth(2)
-            self.painterInstance.setPen(self.penRectangle)
-
-            for box in pre_frames[i][2]:
-               self.painterInstance.drawRect(box[0],box[1],box[2],box[3])
-            
-            self.penRectangle = QPen(Qt.blue)
-            self.penRectangle.setWidth(2)
-            self.painterInstance.setPen(self.penRectangle)
-            
-            if i == step:
-                for b in blobs:
-                    tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1, b.bbox))
-                self.tc.append(0)
-            else:
-                delete_track = association(blobs, tracks, previous_props)
-                new_tracks = []
-                for i in range(len(tracks)):
-                    if i not in delete_track: new_tracks.append(tracks[i])
-                self.tc.append(len(tracks)-len(new_tracks))
-                tracks = new_tracks
+        self.pbar = self.dialog1.pbar
         
-            previous_props = blobs
-
-            if show_blobs:
-                for b in blobs:
-                    minr, minc, maxr, maxc = b.bbox
-                    self.painterInstance.drawRect(minc,maxr,maxc-minc,maxr-minr)
-            else:
-                for t in tracks:
-                    minr, minc, maxr, maxc = t.bbox
-                    self.painterInstance.drawRect(t.x[1]-3, t.x[0]+3, maxc-minc,maxr-minr)
-
-            self.ug.append(1-(len(blobs)/len(pre_frames[i][2])))
-            self.painterInstance.end()
-
-            image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
-            self.img.append(image)
+    
+    def processFrame(self, frames, is_start_frame=False, show_blobs=False):
+        grays = [color.rgb2gray(im) for _, im, _ in frames]
         
-        self.dialog1.close()
-        self.graphObjectDetected()
-        self.graphScores()
+        # Candidate small objects detection
+        binary = objects(grays)
+        
+        # Candidate match discrimination
+        grown = grow(grays[1], binary, copy = True)
+        filtered = filter(grown, self.morph_thresholds, copy = True)
 
-        self.timer = QBasicTimer()
-        self.step = 0
-        self.delay = 1000 #ms
-
-        self.timerEvent()
-
-    def graphObjectDetected(self):
-        global running_window
-
-        pen = pg.mkPen(width = 5)
-        self.graphWidget = pg.plot()
-        self.graphWidget.show()
-        seconds = [i for i in range(1, len(self.num_object)+1)]
-        objects = self.num_object
-
-        self.graphWidget.plot(seconds, objects, pen=pen)
-        self.graphWidget.setTitle("Moving objects per frame", size = "20pt")
-        self.graphWidget.setLabel('left', 'Average Moving Object (per frame)')
-        self.graphWidget.setLabel('bottom', 'Seconds (s)')
-
-        running_window.append(self.graphWidget)
+        labeled_image = measure.label(filtered, background=0, connectivity=1)
+        blobs = measure.regionprops(labeled_image)
+        self.previous_cues = blobs
+        ncands = len(blobs)
+        self.num_object.append(ncands)
+        
+        # Application of kalman filter
+        if is_start_frame:
+            for b in blobs:
+                self.tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1, b.bbox))
+        else:
+            delete_inds = association(blobs, self.tracks, self.previous_cues)
+            self.tracks = [t for i, t in enumerate(self.tracks) if i not in delete_inds]
+        
+        candidates = blobs if show_blobs else self.tracks
+        pred_bboxes = [Box(xtl=cand.bbox[1], ytl=cand.bbox[0],
+                            w=cand.bbox[3] - cand.bbox[1],
+                            h=cand.bbox[2] - cand.bbox[0]) for cand in candidates]
+        gt_bboxes = [Box(*gt_box) for gt_box in frames[1][2]]
+        return pred_bboxes, gt_bboxes
+        
     
-    def graphScores(self):
-        global running_window
+    def drawBoundingBoxes(self, pred_bboxes, gt_bboxes):    
+        self.penRectangle = QPen(Qt.green)
+        self.penRectangle.setWidth(2)
+        self.painterInstance.setPen(self.penRectangle)
 
-        pen1 = pg.mkPen('r',width = 5)
-        pen2 = pg.mkPen('g',width = 5)
-        self.graphWidget = pg.plot()
-        self.graphWidget.addLegend()
-        self.graphWidget.show()
-        seconds = [1,2,3]
-        precision = [1.1,2.1,3.3]
-        recall = [2,3,4]
+        # Draw ground truth bounding boxes
+        for gt_box in gt_bboxes:
+            self.painterInstance.drawRect(gt_box.xtl, gt_box.ytl, gt_box.w, gt_box.h)
+        
+        self.penRectangle = QPen(Qt.blue)
+        self.penRectangle.setWidth(2)
+        self.painterInstance.setPen(self.penRectangle)
 
-        self.graphWidget.plot(seconds, precision, pen=pen1, name = 'precision')
-        self.graphWidget.plot(seconds, recall, pen=pen2, name = 'recall')
-        self.graphWidget.setTitle("Precision and Recall score", size = "20pt")
-        self.graphWidget.setLabel('left', 'Score')
-        self.graphWidget.setLabel('bottom', 'Seconds (s)')
-
-        running_window.append(self.graphWidget)
+        # Draw prediction bounding boxes
+        for pred_box in pred_bboxes:
+            self.painterInstance.drawRect(pred_box.xtl, pred_box.ytl, pred_box.w, pred_box.h)
+            
+        self.painterInstance.end()
     
-    def timerEvent(self, e=None):   
-        self.timer.start(self.delay, self)
-        self.label.setPixmap(self.img[self.step])
+    
+    def graphTimeSeries(self):
+        penPrec = pg.mkPen('r', width=5)
+        penRec = pg.mkPen('g', width=5)
+        
+        plt = pg.plot('Precision and Recall per frame')
+        plt.addLegend()
+
+        plt.plot(self.precisions, pen=penPrec, name='precision')
+        plt.plot(self.recalls, pen=penRec, name='recall')
+        plt.setLabel('left', 'Score')
+        plt.setLabel('bottom', 'Frame no.')
+        running_windows.append(plt)
+
+        plt = pg.plot('Number of moving objects detected per frame')
+        plt.plot(self.num_detected, pen=pg.mkPen(width = 5))
+        plt.setLabel('left', 'Num detected')
+        plt.setLabel('bottom', 'Frame no.')
+        running_windows.append(plt)
+        
+        plt = pg.plot('Unmatched ground truth proportion per frame')
+        plt.plot(1 - self.recalls, pen=pg.mkPen(width = 5))
+        plt.setLabel('left', 'Num detected')
+        plt.setLabel('bottom', 'Frame no.')
+        running_windows.append(plt)
+        
+        plt = pg.plot('Number of switched tracks per frame')
+        plt.plot(1 - self.changed_tracks, pen=pg.mkPen(width = 5))
+        plt.setLabel('left', 'Num switched tracks')
+        plt.setLabel('bottom', 'Frame no.')
+        running_windows.append(plt)
+    
+    
+    def timerEvent(self, delay, e=None):   
+        self.timer.start(delay, self)
+        self.label.setPixmap(self.images[self.current_frame])
         self.label.show()
-
-        self.stat1.setText("Unmatch Ground Truth : {}".format(self.ug[self.step]))
-        self.stat1a.setText("Tracks changed : {}".format(self.tc[self.step]))
-        self.show()
-        self.step = (self.step + 1) % len(self.img)
+        self.current_frame = (self.current_frame + 1) % len(self.images)
+    
     
     def button_clicked(self):
-        global running_window
-        for w in running_window:
+        global running_windows
+        for w in running_windows:
             w.close()
         self.close()
 
 
 class ProgressBar(QWidget):
-    def __init__(self,parent=None):
+    def __init__(self, parent=None):
         super().__init__()
-        global p_bar
         self.pbar = QProgressBar(self)
         self.pbar.setGeometry(30, 40, 200, 25)
         self.pbar.setValue(0)
-        
         self.setWindowTitle("Launching Tracker")
         self.setGeometry(32,32,320,100)
         self.show()
-        p_bar = self.pbar
+
 
 if __name__ == "__main__":
-
-    dataset_path = sys.argv[1].rstrip('/')
-    max_frame = int(sys.argv[2])
-    step = int(sys.argv[3])
-    show_blobs = len(sys.argv) > 4
+    args = parser.parse_args()
+    dataset_path = args.dataset_path
+    show_blobs = args.show_blobs
+    step = args.step
+    max_frame = args.max_frame
+    min_frame = args.min_frame
 
     app = QApplication(sys.argv)
-    widget = Slideshow()
+    widget = Slideshow(dataset_path, show_blobs, frame_range=(min_frame, max_frame))
     widget.resize(1000,600)
     widget.setWindowTitle("Small target tracker")
     widget.show()
+    
     sys.exit(app.exec())
