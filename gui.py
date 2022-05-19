@@ -33,7 +33,7 @@ STEP = None
 
 
 class Slideshow(QMainWindow):
-    def __init__(self, dataset_path, parent=None, frame_range=(1, -1)):
+    def __init__(self, dataset_path, step, frame_range=(1, -1), parent=None):
         super(Slideshow, self).__init__(parent)
         running_windows.append(self)
         self.initSlideShow()
@@ -47,7 +47,7 @@ class Slideshow(QMainWindow):
         frame_nums = loader.frames
         nframes = len(frame_nums)
 
-        for i in range(step, nframes - step, step):
+        for i in range(step, nframes - step):
             self.pbar.setValue(int(round((i - step) / (nframes - step) * 100)))
             QApplication.processEvents()
             
@@ -222,13 +222,12 @@ class ProgressBar(QWidget):
 if __name__ == "__main__":
     args = parser.parse_args()
     dataset_path = args.dataset_path
-    show_blobs = args.show_blobs
     step = args.step
     max_frame = args.max_frame
     min_frame = args.min_frame
 
     app = QApplication(sys.argv)
-    widget = Slideshow(dataset_path, frame_range=(min_frame, max_frame))
+    widget = Slideshow(dataset_path, step=args.step, frame_range=(min_frame, max_frame))
     widget.resize(1000,600)
     widget.setWindowTitle("Small target tracker")
     widget.show()
