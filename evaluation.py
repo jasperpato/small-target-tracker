@@ -19,6 +19,12 @@ class Box:
     def __repr__(self):
         return f'({self.xtl},{self.ytl}), ({self.xbr},{self.ybr})'
     
+    def __str__(self):
+        return self.__repr__()
+    
+    def __eq__(self, other):
+        return self.__str__() == other.__str__()
+    
     
 def is_intersecting(box1: 'Box', box2: 'Box'):
     """
