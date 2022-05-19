@@ -5,6 +5,7 @@ from evaluation import Box
 from skimage import color
 from object_detection import objects
 from skimage.measure import label, regionprops
+from skimage.measure._regionprops import RegionProperties
 from skimage.metrics import structural_similarity
 from scipy.optimize import linear_sum_assignment
 
@@ -13,7 +14,7 @@ Class to initialise a Kalman Filter
 """
 
 class KalmanFilter:
-    def __init__(self, blob, covar=0.001):
+    def __init__(self, blob: RegionProperties, covar: float = 0.001):
         '''
         A new track is initialized at the location of an object 
         with a speed and acceleration of 0
@@ -45,7 +46,8 @@ class KalmanFilter:
         
         
     @classmethod
-    def assign_detections_to_tracks(cls, hypotheses, tracks, previous_hypotheses):
+    def assign_detections_to_tracks(cls, hypotheses: np.ndarray, tracks: np.ndarray, 
+                                    previous_hypotheses: np.ndarray) -> list:
         '''
         Uses the hungarian algorithm to assign hypotheses to tracks. Tracks are initialised for
         unassigned hypotheses and unassigned tracks are matched to the closest previous hypothesis.
@@ -93,7 +95,8 @@ class KalmanFilter:
         return assigned_pairs
     
     
-    def nearest_search(self, previous_hypotheses, search_radius=5, ssim_thresh=0.8):
+    def nearest_search(self, previous_hypotheses: np.ndarray, search_radius: int = 5, 
+                       ssim_thresh: float = 0.8) -> RegionProperties:
         '''
         Finds the previous hypothesis with the lowest ssim to the currently tracked vehicle
         where the hypothesis has an L2 distance from the track less than search_radius
@@ -129,6 +132,7 @@ class KalmanFilter:
             if ssim > max_ssim and ssim > ssim_thresh:
                 max_ssim = ssim
                 best_hyp = hyp
+                
         return best_hyp
             
             
@@ -141,7 +145,7 @@ class KalmanFilter:
         self.P = self.F.dot(self.P).dot(self.F.T) + self.Q
 
 
-    def update(self, blob):
+    def update(self, blob: RegionProperties):
         '''
         After the tracks and hypotheses have been associated with one another, the final 
         step before moving to the next frame is to update the state estimate of the Kalman filter
@@ -163,7 +167,7 @@ class KalmanFilter:
         return self
         
         
-    def update_regprops(self, blob):
+    def update_regprops(self, blob: RegionProperties):
         '''
         Updates the state estimate of the Kalman filter with a blob
         '''
@@ -175,7 +179,7 @@ class KalmanFilter:
         self.im_cue[self.coords] = 1
         
 
-def get_relative_coords(blob_coords):
+def get_relative_coords(blob_coords: np.ndarray):
     rows, cols = zip(*blob_coords)
     min_row, min_col = min(rows), min(cols)
     rows = np.array(rows) - min_row
