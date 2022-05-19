@@ -60,8 +60,9 @@ class KalmanFilter:
         cost_matrix[:, -1] = pseudo_cost    # cost of track being unassigned
         cost_matrix[-1, -1] = 0             # theoretical cost of pseudo hypotheses and pseudo track being unassigned
         
-        hypothesis_ctrs = np.array([hyp.centroid for hyp in hypotheses]).T
-        track_ctrs = np.array([track.x[:2] for track in tracks])
+        hypothesis_ctrs = np.array([hyp.centroid for hyp in hypotheses]).reshape(1, -1)
+        track_ctrs = np.array([track.x[:2] for track in tracks]).reshape(-1, 1)
+        # use array broadcasting to compute the cost matrix
         euclidian_distances = (hypothesis_ctrs ** 2 + track_ctrs ** 2) ** 0.5
         cost_matrix[:-1, :-1] = euclidian_distances
         
