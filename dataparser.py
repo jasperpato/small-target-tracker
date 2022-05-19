@@ -31,6 +31,8 @@ class Dataloader(object):
         
         full_frame_range = self.get_full_frame_range()
         self.frame_range = frame_range or full_frame_range
+        if self.frame_range[1] == -1:
+            self.frame_range[1] = full_frame_range[1]
         if self.frame_range[0] < full_frame_range[0] or self.frame_range[1] > full_frame_range[1]:
             raise ValueError('Frame range {} is out of range {}'.format(frame_range, full_frame_range))
         
