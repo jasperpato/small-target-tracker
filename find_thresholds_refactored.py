@@ -11,11 +11,11 @@ from evaluation import *
 
 
 parser = argparse.ArgumentParser(description='Find thresholds for cue detection')
-parser.add_argument('--dataset_path', type=str, required=True, help='Path to the VISO/car dataset')
+parser.add_argument('--dataset_path', type=str, required=True, help='Path to the VISO/mot dataset')
 parser.add_argument('--change_thresholds', action='store_true', default=False, help='Change thresholds stored in' + 
-                    'results/cue_thresholds.txt stored in based on a new probability range')
+                    'results/cue_thresholds.txt based on the statistics in results/cue_results.txt')
 parser.add_argument('--iou_threshold', type=float, default=0.7, help='IoU threshold for cue detection')
-parser.add_argument('--prob_range', type=float, default=0.9, help='Probability range for cue detection')
+parser.add_argument('--prob_range', type=float, default=0.9, help='Probability range to define the thresholds for cue filtering')
 parser.add_argument('--step', type=int, default=10, help='Interframe difference to use for cue detection')
 parser.add_argument('--num_folders', type=int, default=-1, help='Number of folders to process from dataset.' + \
                     'Type -1 to process all folders')
