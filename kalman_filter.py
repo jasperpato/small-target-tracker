@@ -53,29 +53,32 @@ class KalmanFilter:
         unassigned hypotheses and unassigned tracks are matched to the closest previous hypothesis.
         '''
         new_tracks = []
-        pseudo_track_ind = len(tracks) + 1
-        pseudo_hypothesis_ind = len(hypotheses) + 1
-        pseudo_cost = 1000000
+        pseudo_track_ind = len(tracks)
+        pseudo_hyp_ind = len(hypotheses)
+        pseudo_cost = 10
         
-        cost_matrix = np.zeros((len(tracks)+1 , len(hypotheses)+1))
-        cost_matrix[-1, :] = pseudo_cost    # cost of hypothesis being unassigned
-        cost_matrix[:, -1] = pseudo_cost    # cost of track being unassigned
-        cost_matrix[-1, -1] = 0             # theoretical cost of pseudo hypotheses and pseudo track being unassigned
-        hypothesis_xctrs = np.array([hyp.centroid[0] for hyp in hypotheses]).reshape(1, -1)
-        hypothesis_yctrs = np.array([hyp.centroid[1] for hyp in hypotheses]).reshape(1, -1)
-        track_xctrs = np.array([track.x[0] for track in tracks]).reshape(-1, 1)
-        track_yctrs = np.array([track.x[1] for track in tracks]).reshape(-1, 1)
+        max_dim = max(len(tracks), len(hypotheses))
+        cost_matrix = np.zeros((max_dim + 1, max_dim + 1))
+        cost_matrix[pseudo_track_ind:, :] = pseudo_cost         # cost of assigning pseudo-track to hypothesis
+        cost_matrix[:, pseudo_hyp_ind:] = pseudo_cost           # cost of assigning pseudo-hypothesis to track
+        cost_matrix[pseudo_track_ind:, pseudo_hyp_ind:] = 0     # theoretical cost of assigning pseudo-track to pseudo-hypothesis
+        
+        hyp_x = np.array([hyp.centroid[1] for hyp in hypotheses]).reshape(1, -1)
+        hyp_y = np.array([hyp.centroid[0] for hyp in hypotheses]).reshape(1, -1)
+        track_x = np.array([track.x[0] for track in tracks]).reshape(-1, 1)
+        track_y = np.array([track.x[1] for track in tracks]).reshape(-1, 1)
+        
         # use array broadcasting to compute the cost matrix
-        euclidian_distances = ((hypothesis_yctrs - track_yctrs) ** 2 + (track_xctrs - hypothesis_xctrs) ** 2) ** 0.5
-        cost_matrix[:-1, :-1] = euclidian_distances
+        euclidian_distances = np.sqrt((hyp_x - track_x) ** 2 + (hyp_y - track_y) ** 2)
+        cost_matrix[:pseudo_track_ind, :pseudo_hyp_ind] = euclidian_distances
 
         rows, cols = linear_sum_assignment(cost_matrix)
-        unassigned_track_inds = rows[cols == pseudo_hypothesis_ind]
-        unassigned_hypothesis_inds = cols[rows == pseudo_track_ind]
+        unassigned_track_inds = rows[cols >= pseudo_hyp_ind]
+        unassigned_hypothesis_inds = cols[rows >= pseudo_track_ind]
         
         # assign hypotheses according to linear_sum_assignment
-        assigned_inds = np.logical_and(rows != pseudo_track_ind, cols != pseudo_hypothesis_ind)
-        assigned_pairs = zip(tracks[assigned_inds], hypotheses[assigned_inds])
+        assigned_inds = np.logical_and(rows < pseudo_track_ind, cols < pseudo_hyp_ind)
+        assigned_pairs = zip(tracks[rows[assigned_inds]], hypotheses[cols[assigned_inds]])
         for track, hyp in assigned_pairs:
             track.update(hyp)
             new_tracks.append(track)
@@ -93,7 +96,7 @@ class KalmanFilter:
             hyp = hypotheses[col]
             new_tracks.append(cls(hyp))
             
-        return assigned_pairs, new_tracks
+        return new_tracks
     
     
     def nearest_search(self, previous_hypotheses: np.ndarray, search_radius: int = 5, 
@@ -102,8 +105,8 @@ class KalmanFilter:
         Finds the previous hypothesis with the lowest ssim to the currently tracked vehicle
         where the hypothesis has an L2 distance from the track less than search_radius
         '''
-        previous_hypotheses_ctrs = np.array([hyp.centroid for hyp in previous_hypotheses])
-        euclidian_distances = (previous_hypotheses_ctrs ** 2 + self.x[:2] ** 2) ** 0.5
+        hyp_ctrs = np.array([hyp.centroid[::-1] for hyp in previous_hypotheses])
+        euclidian_distances = np.sqrt((hyp_ctrs[:, 0] - self.x[0]) ** 2 + (hyp_ctrs[:, 1] - self.x[1]) ** 2)
         filtered_hyps = previous_hypotheses[euclidian_distances < search_radius]
         max_ssim = 0.0
         best_hyp = None

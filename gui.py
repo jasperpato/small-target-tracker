@@ -24,7 +24,7 @@ parser.add_argument('--dataset_path', type=str, required=True, help='Path to the
 parser.add_argument('--show_blobs', action='store_true', default=False, help='Show blobs instead of tracks')
 parser.add_argument('--step', type=int, default=10, help='Interframe difference to use for cue detection')
 parser.add_argument('--min_frame', type=int, default=1, help='Minimum frame number to use.')
-parser.add_argument('--max_frame', type=int, default=1, help='Maximum frame number to use. -1 selects up to the highest frame number')
+parser.add_argument('--max_frame', type=int, default=-1, help='Maximum frame number to use. -1 selects up to the highest frame number')
 
 running_windows = []
 
@@ -33,12 +33,11 @@ STEP = None
 
 
 class Slideshow(QMainWindow):
-    def __init__(self, dataset_path, show_blobs=False, parent=None, frame_range=(1, -1)):
+    def __init__(self, dataset_path, parent=None, frame_range=(1, -1)):
         super(Slideshow, self).__init__(parent)
         running_windows.append(self)
         self.initSlideShow()
         self.num_detected = []
-        self.num_object = []
         self.images = []
         self.morph_thresholds = get_thresholds()
         self.tracks = []
@@ -58,19 +57,15 @@ class Slideshow(QMainWindow):
             f0, f1, f2 = [loader(frame_nums[i+j*step]) for j in (-1, 0, 1)]
             img_arr = Image.fromarray(f1[1], mode='RGB')
             image = QPixmap.fromImage(ImageQt.ImageQt(img_arr))
+            
             # Main algorithm
-            pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==step, 
-                                                       show_blobs=show_blobs)
-            m = evaluation_metrics(pred_bboxes, gt_bboxes)
-            self.precisions.append(m['precision'])
-            self.recalls.append(m['recalls'])
-            self.f1.append(m['f1'])
-
+            pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==step)
+            self.num_detected.append(len(pred_bboxes))
+            
             # Draw bounding boxes
             self.painterInstance = QPainter(image)
             self.drawBoundingBoxes(pred_bboxes, gt_bboxes)
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
-            
             self.images.append(image)
         
         self.dialog1.close()
@@ -124,7 +119,7 @@ class Slideshow(QMainWindow):
         self.pbar = self.dialog1.pbar
         
     
-    def processFrame(self, frames, is_start_frame=False, show_blobs=False):
+    def processFrame(self, frames, is_start_frame=False):
         grays = [color.rgb2gray(im) for _, im, _ in frames]
         
         # Candidate small objects detection
@@ -137,23 +132,24 @@ class Slideshow(QMainWindow):
         labeled_image = measure.label(filtered, background=0, connectivity=1)
         blobs = measure.regionprops(labeled_image)
         self.previous_cues = blobs
-        ncands = len(blobs)
-        self.num_object.append(ncands)
         
         # Application of kalman filter
         if is_start_frame:
-            for b in blobs:
-                self.tracks.append(KalmanFilter(b,covar = 0.001))
+            self.tracks = [KalmanFilter(b, covar = 0.001) for b in blobs]
         else:
+<<<<<<< HEAD
             #delete_inds = association(blobs, self.tracks, self.previous_cues)
             hyp = np.array([b for b in blobs])
             tr = np.array([t for t in self.tracks])
             pre_hyp = np.array([p for p in self.previous_cues])
             pairs, self.tracks = KalmanFilter.assign_detections_to_tracks(hyp, tr, pre_hyp)
             #self.tracks = [t for i, t in enumerate(self.tracks) if i not in delete_inds]
+=======
+            self.tracks = KalmanFilter.assign_detections_to_tracks(
+                np.array(blobs), np.array(self.tracks), np.array(self.previous_cues))
+>>>>>>> 7402bbe8f1d545e674fecbeb22f614b28e4ca361
         
-        candidates = blobs if show_blobs else self.tracks
-        pred_bboxes = [cand.bbox for cand in candidates]
+        pred_bboxes = [cand.bbox for cand in self.tracks]
         gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in frames[1][2]]
         return pred_bboxes, gt_bboxes
         
@@ -244,7 +240,7 @@ if __name__ == "__main__":
     min_frame = args.min_frame
 
     app = QApplication(sys.argv)
-    widget = Slideshow(dataset_path, show_blobs, frame_range=(min_frame, max_frame))
+    widget = Slideshow(dataset_path, frame_range=(min_frame, max_frame))
     widget.resize(1000,600)
     widget.setWindowTitle("Small target tracker")
     widget.show()
