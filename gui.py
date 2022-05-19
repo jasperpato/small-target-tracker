@@ -37,8 +37,8 @@ class Slideshow(QMainWindow):
         super(Slideshow, self).__init__(parent)
         running_windows.append(self)
         self.initSlideShow()
-        
         self.num_detected = []
+        self.num_object = []
         self.images = []
         self.morph_thresholds = get_thresholds()
         self.tracks = []
@@ -54,22 +54,23 @@ class Slideshow(QMainWindow):
             
             f0, f1, f2 = [loader(frame_nums[i+j*step]) for j in (-1, 0, 1)]
             img_arr = Image.fromarray(f1[1], mode='RGB')
-            image = QPixmap.fromImage(ImageQt.ImageQt(img_arr)).scaled(
-                500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
-            self.images.append(image)
-            
+            image = QPixmap.fromImage(ImageQt.ImageQt(img_arr))
             # Main algorithm
-            pred_bboxes, gt_bboxes = self.processFrame(loader, (f0, f1, f2), is_start_frame=i==step, 
+            pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==step, 
                                                        show_blobs=show_blobs)
-            
             # Draw bounding boxes
             self.painterInstance = QPainter(image)
             self.drawBoundingBoxes(pred_bboxes, gt_bboxes)
+            image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
+            
+            self.images.append(image)
+            
             
         self.dialog1.close()
         self.timer = QBasicTimer()
         self.current_frame = 0
-        self.timerEvent(delay=1000)
+        self.delay = 1000
+        self.timerEvent()
         
         
     def initSlideShow(self):
@@ -134,22 +135,21 @@ class Slideshow(QMainWindow):
         # Application of kalman filter
         if is_start_frame:
             for b in blobs:
-                self.tracks.append(KalmanFilter(b.centroid[0], b.centroid[1], 0.1, b.bbox))
+                self.tracks.append(KalmanFilter(b,covar = 0.001))
         else:
-            delete_inds = association(blobs, self.tracks, self.previous_cues)
-            self.tracks = [t for i, t in enumerate(self.tracks) if i not in delete_inds]
+            #delete_inds = association(blobs, self.tracks, self.previous_cues)
+            pairs, self.tracks = KalmanFilter.assign_detections_to_tracks(blobs, self.tracks,self.previous_cues)
+            #self.tracks = [t for i, t in enumerate(self.tracks) if i not in delete_inds]
         
         candidates = blobs if show_blobs else self.tracks
-        pred_bboxes = [Box(xtl=cand.bbox[1], ytl=cand.bbox[0],
-                            w=cand.bbox[3] - cand.bbox[1],
-                            h=cand.bbox[2] - cand.bbox[0]) for cand in candidates]
-        gt_bboxes = [Box(*gt_box) for gt_box in frames[1][2]]
+        pred_bboxes = [cand.bbox for cand in candidates]
+        gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in frames[1][2]]
         return pred_bboxes, gt_bboxes
         
     
     def drawBoundingBoxes(self, pred_bboxes, gt_bboxes):    
         self.penRectangle = QPen(Qt.green)
-        self.penRectangle.setWidth(2)
+        self.penRectangle.setWidth(3)
         self.painterInstance.setPen(self.penRectangle)
 
         # Draw ground truth bounding boxes
@@ -157,7 +157,7 @@ class Slideshow(QMainWindow):
             self.painterInstance.drawRect(gt_box.xtl, gt_box.ytl, gt_box.w, gt_box.h)
         
         self.penRectangle = QPen(Qt.blue)
-        self.penRectangle.setWidth(2)
+        self.penRectangle.setWidth(3)
         self.painterInstance.setPen(self.penRectangle)
 
         # Draw prediction bounding boxes
@@ -199,8 +199,8 @@ class Slideshow(QMainWindow):
         running_windows.append(plt)
     
     
-    def timerEvent(self, delay, e=None):   
-        self.timer.start(delay, self)
+    def timerEvent(self, e=None):   
+        self.timer.start(self.delay, self)
         self.label.setPixmap(self.images[self.current_frame])
         self.label.show()
         self.current_frame = (self.current_frame + 1) % len(self.images)

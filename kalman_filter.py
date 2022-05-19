@@ -57,24 +57,38 @@ class KalmanFilter:
         pseudo_hypothesis_ind = len(hypotheses) + 1
         pseudo_cost = 1000000
         
-        cost_matrix = np.zeros((len(tracks) + 1, len(hypotheses) + 1))
+        cost_matrix = np.zeros((len(tracks) , len(hypotheses) ))
         cost_matrix[-1, :] = pseudo_cost    # cost of hypothesis being unassigned
         cost_matrix[:, -1] = pseudo_cost    # cost of track being unassigned
         cost_matrix[-1, -1] = 0             # theoretical cost of pseudo hypotheses and pseudo track being unassigned
-        
+        """
         hypothesis_ctrs = np.array([hyp.centroid for hyp in hypotheses]).reshape(1, -1)
         track_ctrs = np.array([track.x[:2] for track in tracks]).reshape(-1, 1)
         # use array broadcasting to compute the cost matrix
+
         euclidian_distances = (hypothesis_ctrs ** 2 + track_ctrs ** 2) ** 0.5
         cost_matrix[:-1, :-1] = euclidian_distances
-        
+        """
+        for i in range(len(tracks)):
+            for j in range(len(hypotheses)):
+                point1 = np.array((tracks[i].x[0], tracks[i].x[1]))
+                point2 = np.array((hypotheses[j].centroid[0],hypotheses[j].centroid[1]))
+                cost_matrix[i, j] = np.linalg.norm(point1 - point2)
+
         rows, cols = linear_sum_assignment(cost_matrix)
         unassigned_track_inds = rows[cols == pseudo_hypothesis_ind]
         unassigned_hypothesis_inds = cols[rows == pseudo_track_ind]
         
         # assign hypotheses according to linear_sum_assignment
         assigned_inds = np.logical_and(rows != pseudo_track_ind, cols != pseudo_hypothesis_ind)
-        assigned_pairs = zip(tracks[rows[assigned_inds]], hypotheses[cols[assigned_inds]])
+        temp1 = []
+        temp2 = []
+        for i in range(len(assigned_inds)):
+            if assigned_inds[i]:
+                temp1.append(tracks[i])
+                temp2.append(hypotheses[i])
+
+        assigned_pairs = zip(temp1, temp2)
         for track, hyp in assigned_pairs:
             track.update(hyp)
             new_tracks.append(track)
@@ -92,7 +106,7 @@ class KalmanFilter:
             hyp = hypotheses[col]
             new_tracks.append(cls(hyp))
             
-        return assigned_pairs
+        return assigned_pairs, new_tracks
     
     
     def nearest_search(self, previous_hypotheses: np.ndarray, search_radius: int = 5, 
