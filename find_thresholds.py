@@ -54,13 +54,6 @@ def get_morph_cues(binary, gt_boxes, **kwargs):
       tp_a_lengths.append(blob.axis_major_length)
       tp_eccentricities.append(blob.eccentricity)
 
-  # if len(tp_areas) > 0:
-  #  area_avg = np.mean(tp_areas)
-  #  area_std = np.std(tp_areas)
-  # ....
-  # else:
-  #   return None
-
   area_avg, area_std = np.mean(tp_areas) if tp_areas else -1, np.std(tp_areas) if tp_areas else -1    # what does the -1 do?
   ext_avg, ext_std = np.mean(tp_extents) if tp_extents else -1, np.std(tp_extents) if tp_extents else -1
   alen_avg, alen_std = np.mean(tp_a_lengths) if tp_a_lengths else -1, np.std(tp_a_lengths) if tp_a_lengths else -1
