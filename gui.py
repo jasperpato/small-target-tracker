@@ -42,6 +42,9 @@ class Slideshow(QMainWindow):
         self.images = []
         self.morph_thresholds = get_thresholds()
         self.tracks = []
+        self.precisions = []
+        self.recalls = []
+        self.f1 = []
         self.previous_cues = None
         
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
@@ -58,15 +61,20 @@ class Slideshow(QMainWindow):
             # Main algorithm
             pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==step, 
                                                        show_blobs=show_blobs)
+            m = evaluation_metrics(pred_bboxes, gt_bboxes)
+            self.precisions.append(m['precision'])
+            self.recalls.append(m['recalls'])
+            self.f1.append(m['f1'])
+
             # Draw bounding boxes
             self.painterInstance = QPainter(image)
             self.drawBoundingBoxes(pred_bboxes, gt_bboxes)
             image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
             
             self.images.append(image)
-            
-            
+        
         self.dialog1.close()
+        self.graphTimeSeries()
         self.timer = QBasicTimer()
         self.current_frame = 0
         self.delay = 1000
@@ -138,7 +146,10 @@ class Slideshow(QMainWindow):
                 self.tracks.append(KalmanFilter(b,covar = 0.001))
         else:
             #delete_inds = association(blobs, self.tracks, self.previous_cues)
-            pairs, self.tracks = KalmanFilter.assign_detections_to_tracks(blobs, self.tracks,self.previous_cues)
+            hyp = np.array([b for b in blobs])
+            tr = np.array([t for t in self.tracks])
+            pre_hyp = np.array([p for p in self.previous_cues])
+            pairs, self.tracks = KalmanFilter.assign_detections_to_tracks(hyp, tr, pre_hyp)
             #self.tracks = [t for i, t in enumerate(self.tracks) if i not in delete_inds]
         
         candidates = blobs if show_blobs else self.tracks
