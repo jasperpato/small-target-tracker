@@ -10,19 +10,22 @@ https://github.com/The-Learning-And-VisionAtelier-LAVA/VISO
 1. Download the file from the github:
 > https://github.com/jasperpato/small-target-tracker.git
 
-2. Download the requirements to run the program with:
+2. Download the VISO file from the github:
+> https://github.com/The-Learning-And-VisionAtelier-LAVA/VISO 
+
+3. Download the requirements to run the program with:
 > pip install -r requirements.txt
 
-3. Run the program by running this line of code:
+4. Run the program by running this line of code:
 > python3 gui.py --dataset_path [file_path] --min_frame [start] --max_frame [finish]
->> ### Parameter info
+>> #### Parameter info
 >> - **file_path** must be a VISO/mot/[vehicle]/[file_number]
 >> - **start** is the first frame to analyse. Must not be less than 1
 >> - **finish** is the last frame to analyse. Must not be larger than the number of images in file_path
 
-4. (Optional) Once launch you can change the parameters in the text box
+5. (Optional) Once launch you can change the parameters in the text box
 
-5. Press start and wait for the tracker to load (Can take a while)
+6. Press start and wait for the tracker to load (Can take a while)
 
-6. After loading, the program should show 4 graphs and a slideshow of the tracked objects
+7. After loading, the program should show 4 graphs and a slideshow of the tracked objects
 
