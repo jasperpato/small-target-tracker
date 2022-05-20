@@ -1,4 +1,4 @@
-# small-target-tracker
+# Small Target Tracker
 Computer Vision Sem 1 2022 Project
 
 ## Introduction
