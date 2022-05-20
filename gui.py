@@ -20,7 +20,6 @@ from skimage import color
 
 parser = argparse.ArgumentParser(description='Find thresholds for cue detection')
 parser.add_argument('--dataset_path', type=str, required=True, help='Path to the VISO/mot/car/{frame_no} dataset')
-parser.add_argument('--show_blobs', action='store_true', default=False, help='Show blobs instead of tracks')
 parser.add_argument('--min_frame', type=int, default=1, help='Minimum frame number to use.')
 parser.add_argument('--max_frame', type=int, default=-1, help='Maximum frame number to use. -1 selects up to the highest frame number')
 
@@ -37,15 +36,18 @@ class Slideshow(QMainWindow):
         self.h = h
         running_windows.append(self)
         self.initSlideShow()
-        self.num_detected = []
         self.images = []
         self.morph_thresholds = get_thresholds()
-        self.tracks = []
+        
+        self.num_detected = []
         self.precisions = []
         self.recalls = []
         self.f1 = []
-        self.changed_tracks = []
+        self.num_changed_tracks = []
+        
+        self.tracks = []
         self.previous_cues = None
+        self.kalman2gt = {}
         
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
         # Had to retrieve correct number of frames so that GTboxes work
@@ -67,6 +69,14 @@ class Slideshow(QMainWindow):
             self.precisions.append(m['precision'])
             self.recalls.append(m['recall'])
             self.f1.append(m['f1'])
+            
+            # Calculate number of changed tracks
+            detected_gts = m['pred2gt']
+            kalman2ind = dict(zip(self.tracks, detected_gts))
+            kalman2gt = {k: v for k, v in kalman2gt.items() if v != -1}
+            num_changed_tracks = sum(kalman2gt[k] != self.kalman2gt[k] for k in kalman2gt if k in self.kalman2gt)
+            self.num_changed_tracks.append(num_changed_tracks)
+            self.kalman2gt = kalman2gt
 
             # Draw bounding boxes
             self.painterInstance = QPainter(image)
@@ -81,7 +91,7 @@ class Slideshow(QMainWindow):
         self.precisions = np.array(self.precisions)
         self.recalls = np.array(self.recalls)
         self.f1 = np.array(self.f1)
-        self.changed_tracks = np.array(self.changed_tracks)
+        self.num_changed_tracks = np.array(self.num_changed_tracks)
         self.stat2.setText("Average Precision Score : {}".format(np.average(self.precisions)))
         self.stat3.setText("Average Recall score: {}".format(np.average(self.recalls)))
         self.stat4.setText("Average F1 score : {}".format(np.average(self.f1)))
@@ -198,7 +208,7 @@ class Slideshow(QMainWindow):
         running_windows.append(plt)
         
         plt = pg.plot()
-        plt.plot(1 - self.changed_tracks, pen=pg.mkPen(width = 5))
+        plt.plot(1 - self.num_changed_tracks, pen=pg.mkPen(width = 5))
         plt.setLabel('left', 'Num switched tracks')
         plt.setLabel('bottom', 'Frame no.')
         plt.setWindowTitle('Number of switched tracks per frame')
@@ -253,7 +263,7 @@ class Start(QWidget):
 
         self.layout.addWidget(QLabel("Maximum Radius for Nearest Hypothesis Match"), 1, 2, 1,1)
         self.lineEdit4 = QLineEdit()
-        self.lineEdit4.setText("10")
+        self.lineEdit4.setText("5")
         self.layout.addWidget(self.lineEdit4, 1, 3, 1,1)
 
         self.layout.addWidget(QLabel("Candidate Detection Probability Threshold"), 2, 0, 1,1)
@@ -268,7 +278,7 @@ class Start(QWidget):
 
         self.layout.addWidget(QLabel("Interframe difference for Candidate Detection"), 3, 0, 1,1)
         self.lineEdit7 = QLineEdit()
-        self.lineEdit7.setText("5")
+        self.lineEdit7.setText("10")
         self.layout.addWidget(self.lineEdit7, 3, 1, 1,1)
 
         self.layout.addWidget(QLabel("Maximum Threshold Difference for Region Growing"), 3, 2, 1,1)
