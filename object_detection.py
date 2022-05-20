@@ -11,7 +11,7 @@ from skimage import measure, color, filters
 from evaluation import *
   
 
-def objects(grays):
+def objects(grays, thresh):
   '''
   Takes a list of three grayscale images.
   Outputs a single numpy array representing a binary image, in which clusters of
@@ -33,7 +33,7 @@ def objects(grays):
       # mean
       m1, m2 = np.mean(dif1), np.mean(dif2)
       # threshold
-      th1, th2 = -math.log(0.05) * m1, -math.log(0.05) * m2
+      th1, th2 = -math.log(thresh) * m1, -math.log(thresh) * m2
       # mask
       b1, b2 = dif1 > th1, dif2 > th2
       # intersection
@@ -42,7 +42,7 @@ def objects(grays):
   return binary
 
 
-def grow(gray, binary, **kwargs):
+def grow(gray, binary, thresh, diff_thresh, **kwargs):
   '''
   Implement a region growing function that is applied at the centroids of candidate clusters.
   '''
@@ -65,9 +65,9 @@ def grow(gray, binary, **kwargs):
     sd = np.std(blob_grays)
     if not sd: continue
       
-    t1 = norm.ppf(5e-3, loc=mean, scale=sd)
+    t1 = norm.ppf(thresh, loc=mean, scale=sd)
     t2 = 2 * mean - t1  
-    if t2 - t1 > 0.5: continue
+    if t2 - t1 > diff_thresh: continue
     
     # 11 x 11 box bounds
     l = ctr_col - 5 if ctr_col - 5 >= 0 else 0
