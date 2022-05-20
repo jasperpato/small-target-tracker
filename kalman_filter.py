@@ -47,6 +47,10 @@ class KalmanFilter:
 
         self.update_regprops(blob)
         
+
+    def __hash__(self) -> int:
+        return hash(str(self.bbox))
+        
         
     @classmethod
     def assign_detections_to_tracks(cls, hypotheses: np.ndarray, tracks: np.ndarray, 
