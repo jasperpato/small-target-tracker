@@ -122,7 +122,7 @@ def get_thresholds():
   '''
 
   thresholds = { 'area': (0,0), 'ext': (0,0), 'alen': (0,0), 'ecc': (0,0), }
-  with open('results/cue_thresholds_backup.txt', 'r') as f:
+  with open('results/cue_thresholds.txt', 'r') as f:
     data = [float(n) for n in f.read().split(',')]
     thresholds['area'] = (data[0], data[1])
     thresholds['ext'] = (data[2], data[3])

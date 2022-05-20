@@ -187,15 +187,17 @@ class KalmanFilter:
         self.im_cue[self.coords] = 1
         
 
+# Get bounding box coordinates relative to the start of the bbox
 def get_relative_coords(blob_coords: np.ndarray):
     rows, cols = zip(*blob_coords)
     min_row, min_col = min(rows), min(cols)
     rows = np.array(rows) - min_row
     cols = np.array(cols) - min_col
     return rows, cols
+   
     
-
-def centre_pad(img, h ,w):
+# Pad an image to the specified height and width
+def centre_pad(img, h, w):
     top_pad = math.floor((h - img.shape[0]) / 2)
     bottom_pad = math.ceil((h - img.shape[0]) / 2)
     right_pad = math.ceil((w - img.shape[1]) / 2)
