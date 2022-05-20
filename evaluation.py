@@ -72,21 +72,25 @@ def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
     """
     
     npos = len(gt_bboxes)
+    npred = len(pred_bboxes)
+    pred2gt = np.full(npred, -1)
     seen_gts = np.zeros(npos)
     tp = 0
     fp = 0
     
-    for pred in pred_bboxes:
+    for i in range(npred):
+        pred = pred_bboxes[i]
         max_iou = 0.0
-        for i in range(npos):
-            iou = intersection_over_union(pred, gt_bboxes[i])
+        for j in range(npos):
+            iou = intersection_over_union(pred, gt_bboxes[j])
             if iou > max_iou:
                 max_iou = iou
-                gt_idx = i  # index of the ground truth box with the highest IoU
+                gt_idx = j  # index of the ground truth box with the highest IoU
         
         if max_iou >= iou_threshold and not seen_gts[gt_idx]:
             tp += 1
             seen_gts[gt_idx] = 1
+            pred2gt[i] = gt_idx
         else:
             fp += 1
 
@@ -98,4 +102,4 @@ def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
         f1 = 2 * precision * recall / (precision + recall)
     except:
         f1 = 0
-    return {'precision': precision, 'recall': tp / npos, 'f1': f1}
+    return {'precision': precision, 'recall': tp / npos, 'f1': f1, 'pred2gt': pred2gt}
