@@ -229,48 +229,49 @@ class ProgressBar(QWidget):
         self.setGeometry(32,32,320,100)
         self.show()
 
+
 class Start(QWidget):
     def __init__(self,parent = None):
         super().__init__()
         self.layout = QGridLayout()
         self.setLayout(self.layout)
         
-        self.layout.addWidget(QLabel("Covariance"), 0, 0, 1,1)
+        self.layout.addWidget(QLabel("Kalman Covariance Factor"), 0, 0, 1,1)
         self.lineEdit1 = QLineEdit()
         self.lineEdit1.setText("0.001")
         self.layout.addWidget(self.lineEdit1, 0, 1, 1,1)
 
-        self.layout.addWidget(QLabel("Cost"), 0, 2, 1,1)
+        self.layout.addWidget(QLabel("Unassociated Track/Hypothesis Cost"), 0, 2, 1,1)
         self.lineEdit2 = QLineEdit()
         self.lineEdit2.setText("10")
         self.layout.addWidget(self.lineEdit2, 0, 3, 1,1)
 
-        self.layout.addWidget(QLabel("Matching Threshold"), 1, 0, 1,1)
+        self.layout.addWidget(QLabel("Minimum SSIM for Nearest Hypothesis Match"), 1, 0, 1,1)
         self.lineEdit3 = QLineEdit()
         self.lineEdit3.setText("0.8")
         self.layout.addWidget(self.lineEdit3, 1, 1, 1,1)
 
-        self.layout.addWidget(QLabel("Matching Radius"), 1, 2, 1,1)
+        self.layout.addWidget(QLabel("Maximum Radius for Nearest Hypothesis Match"), 1, 2, 1,1)
         self.lineEdit4 = QLineEdit()
-        self.lineEdit4.setText("5")
+        self.lineEdit4.setText("10")
         self.layout.addWidget(self.lineEdit4, 1, 3, 1,1)
 
-        self.layout.addWidget(QLabel("Object Threshold"), 2, 0, 1,1)
+        self.layout.addWidget(QLabel("Candidate Detection Probability Threshold"), 2, 0, 1,1)
         self.lineEdit5 = QLineEdit()
         self.lineEdit5.setText("0.05")
         self.layout.addWidget(self.lineEdit5, 2, 1, 1,1)
 
-        self.layout.addWidget(QLabel("Region Threshold"), 2, 2, 1,1)
+        self.layout.addWidget(QLabel("Region Growing Probability Threshold"), 2, 2, 1,1)
         self.lineEdit6 = QLineEdit()
         self.lineEdit6.setText("0.005")
         self.layout.addWidget(self.lineEdit6, 2, 3, 1,1)
 
-        self.layout.addWidget(QLabel("Frame difference"), 3, 0, 1,1)
+        self.layout.addWidget(QLabel("Interframe difference for Candidate Detection"), 3, 0, 1,1)
         self.lineEdit7 = QLineEdit()
         self.lineEdit7.setText("5")
         self.layout.addWidget(self.lineEdit7, 3, 1, 1,1)
 
-        self.layout.addWidget(QLabel("Threshold difference"), 3, 2, 1,1)
+        self.layout.addWidget(QLabel("Maximum Threshold Difference for Region Growing"), 3, 2, 1,1)
         self.lineEdit8 = QLineEdit()
         self.lineEdit8.setText("0.5")
         self.layout.addWidget(self.lineEdit8, 3, 3, 1,1)
@@ -278,6 +279,7 @@ class Start(QWidget):
         self.button = QPushButton("Start")
         self.button.clicked.connect(self.start)
         self.layout.addWidget(self.button, 4, 3, 1,1)
+
 
     def start(self):
         hyper_param = []
@@ -295,6 +297,8 @@ class Start(QWidget):
         widget.setWindowTitle("Small target tracker")
         widget.show()
         return
+    
+    
 if __name__ == "__main__":
     args = parser.parse_args()
     app = QApplication(sys.argv)

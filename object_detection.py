@@ -42,11 +42,14 @@ def objects(grays, thresh):
   return binary
 
 
-def grow(gray, binary, thresh, diff_thresh, **kwargs):
+def grow(gray, binary, **hyperparams):
   '''
   Implement a region growing function that is applied at the centroids of candidate clusters.
   '''
-  if kwargs.get('copy', False): binary = deepcopy(binary)
+  thresh = hyperparams.get('thresh', 5e-3)
+  diff_thresh = hyperparams.get('diff_thresh', 0.5)
+  if hyperparams.get('copy', False): binary = deepcopy(binary)
+  
   gray = filters.unsharp_mask(gray, radius=2.0, amount=3.0)
   height, width = gray.shape
   blobs = measure.regionprops(
@@ -119,7 +122,7 @@ def get_thresholds():
   '''
 
   thresholds = { 'area': (0,0), 'ext': (0,0), 'alen': (0,0), 'ecc': (0,0), }
-  with open('results/cue_thresholds.txt', 'r') as f:
+  with open('results/cue_thresholds_backup.txt', 'r') as f:
     data = [float(n) for n in f.read().split(',')]
     thresholds['area'] = (data[0], data[1])
     thresholds['ext'] = (data[2], data[3])

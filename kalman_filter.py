@@ -50,13 +50,17 @@ class KalmanFilter:
         
     @classmethod
     def assign_detections_to_tracks(cls, hypotheses: np.ndarray, tracks: np.ndarray, 
-                                    previous_hypotheses: np.ndarray, covar:float,pcost:float,
-                                    ssim_thresh:float, ssim_rad:float) -> list:
+                                    previous_hypotheses: np.ndarray, **hyperparams) -> list:
         '''
-        Uses the hungarian algorithm to assign hypotheses to tracks and update each trach according '
+        Uses the hungarian algorithm to assign hypotheses to tracks and update each trach according
         to the assigned hypothesis. Tracks are initialised for unassigned hypotheses and unassigned 
         tracks are matched to the closest previous hypothesis.
         '''
+        covar = hyperparams.get('covar', 0.001)
+        pcost = hyperparams.get('pcost', 10)
+        ssim_thresh = hyperparams.get('ssim_thresh', 0.8)
+        ssim_rad = hyperparams.get('ssim_rad', 5)
+        
         new_tracks = []
         pseudo_track_ind = len(tracks)
         pseudo_hyp_ind = len(hypotheses)
@@ -196,7 +200,6 @@ def centre_pad(img, h ,w):
     bottom_pad = math.ceil((h - img.shape[0]) / 2)
     right_pad = math.ceil((w - img.shape[1]) / 2)
     left_pad = math.floor((w - img.shape[1]) / 2)
-    print(top_pad, bottom_pad, right_pad, left_pad)
     return np.pad(img, ((top_pad, bottom_pad), (left_pad, right_pad)), 
                   mode='constant', constant_values=0)
         
