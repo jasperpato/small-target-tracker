@@ -44,6 +44,7 @@ class Slideshow(QMainWindow):
         self.precisions = []
         self.recalls = []
         self.f1 = []
+        self.changed_tracks = []
         self.previous_cues = None
         
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
@@ -53,7 +54,6 @@ class Slideshow(QMainWindow):
         for i in range(step, nframes - step, step):
             self.pbar.setValue(int(round((i - step) / (nframes - step) * 100)))
             QApplication.processEvents()
-            
             f0, f1, f2 = [loader(frame_nums[i+j*step]) for j in (-1, 0, 1)]
             img_arr = Image.fromarray(f1[1], mode='RGB')
             image = QPixmap.fromImage(ImageQt.ImageQt(img_arr))
@@ -62,6 +62,13 @@ class Slideshow(QMainWindow):
             pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==step)
             self.num_detected.append(len(pred_bboxes))
             
+            # Record stats
+
+            m = evaluation_metrics(np.array(pred_bboxes), np.array(gt_bboxes))
+            self.precisions.append(m['precision'])
+            self.recalls.append(m['recall'])
+            self.f1.append(m['f1'])
+
             # Draw bounding boxes
             self.painterInstance = QPainter(image)
             self.drawBoundingBoxes(pred_bboxes, gt_bboxes)
@@ -69,7 +76,10 @@ class Slideshow(QMainWindow):
             self.images.append(image)
         
         self.dialog1.close()
-        self.graphTimeSeries()
+        self.stat2.setText("Average Precision Score : {}".format(sum(self.precisions)/len(self.precisions)))
+        self.stat3.setText("Average Recall score: {}".format(sum(self.recalls)/len(self.recalls)))
+        self.stat4.setText("Average F1 score : {}".format(sum(self.f1)/len(self.f1)))
+        #self.graphTimeSeries()
         self.timer = QBasicTimer()
         self.current_frame = 0
         self.delay = 1000
@@ -98,15 +108,15 @@ class Slideshow(QMainWindow):
         self.stat1a.adjustSize()
         self.stat1a.move(600, 100)
 
-        self.stat2 = QLabel("Average Precision Score",self)
+        self.stat2 = QLabel("Average Precision Score : 00.00",self)
         self.stat2.adjustSize()
         self.stat2.move(600, 150)
 
-        self.stat3 = QLabel("Average Recall score",self)
+        self.stat3 = QLabel("Average Recall score: 00.00",self)
         self.stat3.adjustSize()
         self.stat3.move(600, 200)
 
-        self.stat4 = QLabel("Average F1 score",self)
+        self.stat4 = QLabel("Average F1 score : 00.00",self)
         self.stat4.adjustSize()
         self.stat4.move(600, 250)
 
@@ -124,7 +134,7 @@ class Slideshow(QMainWindow):
         
         # Candidate small objects detection
         binary = objects(grays)
-        
+
         # Candidate match discrimination
         grown = grow(grays[1], binary, copy = True)
         filtered = filter(grown, self.morph_thresholds, copy = True)
@@ -137,17 +147,8 @@ class Slideshow(QMainWindow):
         if is_start_frame:
             self.tracks = [KalmanFilter(b, covar = 0.001) for b in blobs]
         else:
-<<<<<<< HEAD
-            #delete_inds = association(blobs, self.tracks, self.previous_cues)
-            hyp = np.array([b for b in blobs])
-            tr = np.array([t for t in self.tracks])
-            pre_hyp = np.array([p for p in self.previous_cues])
-            pairs, self.tracks = KalmanFilter.assign_detections_to_tracks(hyp, tr, pre_hyp)
-            #self.tracks = [t for i, t in enumerate(self.tracks) if i not in delete_inds]
-=======
             self.tracks = KalmanFilter.assign_detections_to_tracks(
                 np.array(blobs), np.array(self.tracks), np.array(self.previous_cues))
->>>>>>> 7402bbe8f1d545e674fecbeb22f614b28e4ca361
         
         pred_bboxes = [cand.bbox for cand in self.tracks]
         gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in frames[1][2]]
