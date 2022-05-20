@@ -13,6 +13,8 @@ from scipy.optimize import linear_sum_assignment
 Class to initialise a Kalman Filter
 """
 
+PROPORTION_OF_PSEUDOS = 0.1
+
 class KalmanFilter:
     def __init__(self, blob: RegionProperties, covar: float = 0.001):
         '''
@@ -56,10 +58,11 @@ class KalmanFilter:
         new_tracks = []
         pseudo_track_ind = len(tracks)
         pseudo_hyp_ind = len(hypotheses)
-        pseudo_cost = 100
+        pseudo_cost = 10
         
         max_dim = max(len(tracks), len(hypotheses))
-        cost_matrix = np.zeros((max_dim + 1, max_dim + 1))
+        cost_matrix = np.zeros((max_dim + int(PROPORTION_OF_PSEUDOS * max_dim), 
+                                max_dim + int(PROPORTION_OF_PSEUDOS * max_dim)))
         cost_matrix[pseudo_track_ind:, :] = pseudo_cost         # cost of assigning pseudo-track to hypothesis
         cost_matrix[:, pseudo_hyp_ind:] = pseudo_cost           # cost of assigning pseudo-hypothesis to track
         cost_matrix[pseudo_track_ind:, pseudo_hyp_ind:] = 0     # theoretical cost of assigning pseudo-track to pseudo-hypothesis
