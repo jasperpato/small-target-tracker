@@ -50,6 +50,10 @@ class KalmanFilter:
 
     def __hash__(self) -> int:
         return hash(str(self.bbox))
+    
+    
+    def __eq__(self, other):
+        return self.bbox == other.bbox
         
         
     @classmethod
