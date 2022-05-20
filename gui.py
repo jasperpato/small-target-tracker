@@ -49,12 +49,11 @@ class Slideshow(QMainWindow):
         
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
         # Had to retrieve correct number of frames so that GTboxes work
-        frame_nums = loader.frames[:frame_range[1]]
-        nframes = len(frame_nums)
-        for i in range(step, nframes - step):
+        nframes = len(loader.preloaded_frames)
+        for i in range(step, nframes - step, step):
             self.pbar.setValue(int(round((i - step) / (nframes - step) * 100)))
             QApplication.processEvents()
-            f0, f1, f2 = [loader(frame_nums[i+j*step]) for j in (-1, 0, 1)]
+            f0, f1, f2 = [list(loader.preloaded_frames.values())[i+j*step] for j in (-1, 0, 1)]
             img_arr = Image.fromarray(f1[1], mode='RGB')
             image = QPixmap.fromImage(ImageQt.ImageQt(img_arr))
             

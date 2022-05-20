@@ -29,7 +29,7 @@ class Dataloader(object):
         self.frame_paths = {get_frame(p): p for p in img_paths}
         
         full_frame_range = self.get_full_frame_range()
-        self.frame_range = frame_range or full_frame_range
+        self.frame_range = list(frame_range) or full_frame_range
         if self.frame_range[1] == -1:
             self.frame_range[1] = full_frame_range[1]
         if self.frame_range[0] < full_frame_range[0] or self.frame_range[1] > full_frame_range[1]:
