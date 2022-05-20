@@ -7,11 +7,10 @@ import pyqtgraph as pg
 from dataparser import Dataloader
 from object_detection import get_thresholds, objects, grow, filter
 from kalman_filter import KalmanFilter
-from match import association
 from evaluation import *
 
-from PySide6.QtCore import Qt, Slot, QBasicTimer, QStringListModel
-from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QLineEdit, QMessageBox, QProgressBar, QLabel, QGridLayout, QSizePolicy, QFileDialog
+from PySide6.QtCore import Qt, QBasicTimer
+from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QProgressBar, QLabel, QGridLayout, QLineEdit
 from PySide6.QtGui import QPixmap, QPainter, QPen
 from PIL import Image, ImageQt
 
@@ -50,12 +49,13 @@ class Slideshow(QMainWindow):
         
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
         # Had to retrieve correct number of frames so that GTboxes work
-        nframes = len(loader.preloaded_frames)
-        for i in range(frame_diff, nframes - frame_diff):
-            self.pbar.setValue(int(round((i - frame_diff) / (nframes - frame_diff) * 100)))
+        frame_nums = loader.frame_nums
+        for i in range(frame_diff, len(frame_nums) - frame_diff):
+            self.pbar.setValue(int(round((i - frame_diff) / (len(frame_nums) - frame_diff) * 100)))
             QApplication.processEvents()
-            f0, f1, f2 = [list(loader.preloaded_frames.values())[i+j*frame_diff] for j in (-1, 0, 1)]
-            img_arr = Image.fromarray(f1[1], mode='RGB')
+            
+            f0, f1, f2 = [loader(frame_nums[i+j*frame_diff]) for j in (-1, 0, 1)]
+            img_arr = Image.fromarray(f1[0], mode='RGB')
             image = QPixmap.fromImage(ImageQt.ImageQt(img_arr))
             
             # Main algorithm
@@ -122,29 +122,31 @@ class Slideshow(QMainWindow):
         
     
     def processFrame(self, frames, is_start_frame=False):
-        grays = [color.rgb2gray(im) for _, im, _ in frames]
+        ctr_frame = frames[1]
+        grays = [color.rgb2gray(im) for im, _ in frames]
         
         # Candidate small objects detection
-        binary = objects(grays, self.h[4])
+        binary = objects(grays, thresh=self.h[4])
 
         # Candidate match discrimination
-        grown = grow(grays[1], binary, self.h[5], self.h[6],copy = True)
+        grown = grow(grays[1], binary, thresh=self.h[5], diff_thresh=self.h[6], copy=True)
         filtered = filter(grown, self.morph_thresholds, copy = True)
 
+        # CCA to find hypotheses
         labeled_image = measure.label(filtered, background=0, connectivity=1)
         blobs = measure.regionprops(labeled_image)
         self.previous_cues = blobs
         
         # Application of kalman filter
         if is_start_frame:
-            self.tracks = [KalmanFilter(b, covar = self.h[0]) for b in blobs]
+            self.tracks = [KalmanFilter(b, covar=self.h[0]) for b in blobs]
         else:
             self.tracks = KalmanFilter.assign_detections_to_tracks(
                 np.array(blobs), np.array(self.tracks), np.array(self.previous_cues),
-                self.h[0],self.h[1], self.h[2],self.h[3])
+                var=self.h[0], pcost=self.h[1], ssim_thresh=self.h[2], ssim_rad=self.h[3])
         
         pred_bboxes = [cand.bbox for cand in self.tracks]
-        gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in frames[1][2]]
+        gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in ctr_frame[1]]
         return pred_bboxes, gt_bboxes
         
     

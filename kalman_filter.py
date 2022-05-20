@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import math
 from dataparser import Dataloader
 from evaluation import Box
 from skimage import color
@@ -49,7 +50,7 @@ class KalmanFilter:
         
     @classmethod
     def assign_detections_to_tracks(cls, hypotheses: np.ndarray, tracks: np.ndarray, 
-                                    previous_hypotheses: np.ndarray, var:float,pcost:float,
+                                    previous_hypotheses: np.ndarray, covar:float,pcost:float,
                                     ssim_thresh:float, ssim_rad:float) -> list:
         '''
         Uses the hungarian algorithm to assign hypotheses to tracks and update each trach according '
@@ -100,7 +101,7 @@ class KalmanFilter:
         # initialise tracks for unassigned hypotheses
         for col in unassigned_hypothesis_inds:
             hyp = hypotheses[col]
-            new_tracks.append(cls(hyp, covar = var))
+            new_tracks.append(cls(hyp, covar=covar))
             
         return new_tracks
     
@@ -121,25 +122,14 @@ class KalmanFilter:
             hyp_box = Box(xtl=hyp.bbox[1], ytl=hyp.bbox[0],
                             w=hyp.bbox[3] - hyp.bbox[1],
                             h=hyp.bbox[2] - hyp.bbox[0])
-            bound_h, bound_w = [max(self.bbox.h, hyp_box.h), max(self.bbox.w, hyp_box.w)]
-            
-            # find images of the hypothesis and tracked object
-            im_hyp = np.zeros((bound_h, bound_w))
+            # find image of the hypothesis
+            im_hyp = np.zeros((hyp_box.h, hyp_box.w))
             im_hyp[get_relative_coords(hyp.coords)] = 1
             
-            # center pad hypothesis image
-            y_pad = (bound_h - hyp_box.h) // 2
-            x_pad = (bound_w - hyp_box.w) // 2
-            im_hyp = np.pad(im_hyp, ((y_pad,), (x_pad,)), constant_values=0)
-            
-            # center pad track image
-            y_pad = (bound_h - self.bbox.h) // 2
-            x_pad = (bound_w - self.bbox.w) // 2
-            im_track = np.pad(self.im_cue, ((y_pad,), (x_pad,)), constant_values=0)
-
-            # Need to build a 7x7 or bigger matrix to pass to ssim (Need to review)
-            im_track = np.pad(im_track, pad_width=3)
-            im_hyp = np.pad(im_hyp, pad_width=3)
+            # center pad images to the same shape
+            bound_h, bound_w = [max(self.bbox.h, hyp_box.h, 7), max(self.bbox.w, hyp_box.w, 7)]
+            im_hyp = centre_pad(im_hyp, bound_h, bound_w)
+            im_track = centre_pad(self.im_cue, bound_h, bound_w)
             
             # compute ssim
             ssim = structural_similarity(im_track, im_hyp, data_range=1.0)
@@ -199,6 +189,16 @@ def get_relative_coords(blob_coords: np.ndarray):
     rows = np.array(rows) - min_row
     cols = np.array(cols) - min_col
     return rows, cols
+    
+
+def centre_pad(img, h ,w):
+    top_pad = math.floor((h - img.shape[0]) / 2)
+    bottom_pad = math.ceil((h - img.shape[0]) / 2)
+    right_pad = math.ceil((w - img.shape[1]) / 2)
+    left_pad = math.floor((w - img.shape[1]) / 2)
+    print(top_pad, bottom_pad, right_pad, left_pad)
+    return np.pad(img, ((top_pad, bottom_pad), (left_pad, right_pad)), 
+                  mode='constant', constant_values=0)
         
 
 # Test to see if state vector and P are updated correctly
@@ -214,7 +214,7 @@ if __name__ == '__main__':
     count = 0
     for i in range(i0, len(preloaded_frames) - i0):
         frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
-        grays = [color.rgb2gray(f[1]) for f in frames]
+        grays = [color.rgb2gray(im) for im, _ in frames]
 
         b = objects(grays)
 
