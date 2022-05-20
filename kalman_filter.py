@@ -213,7 +213,7 @@ if __name__ == '__main__':
     count = 0
     for i in range(i0, len(preloaded_frames) - i0):
         frames = [preloaded_frames[i+j*i0] for j in (-1,0,1)]
-        grays = [color.rgb2gray(f[1]) for f in frames]
+        grays = [color.rgb2gray(im) for im, _ in frames]
 
         b = objects(grays)
 
