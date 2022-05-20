@@ -93,8 +93,8 @@ class Slideshow(QMainWindow):
         
     def initSlideShow(self):
         self.label = QLabel(self)
-        self.label.resize(500,500)
-        self.label.move(50,50)
+        self.label.resize(600,600)
+        self.label.move(20,20)
 
         self.title = QLabel("<h3>Statistics</h3>",self)
         self.title.move(600, 10)
