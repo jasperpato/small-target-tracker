@@ -49,13 +49,14 @@ class KalmanFilter:
     def assign_detections_to_tracks(cls, hypotheses: np.ndarray, tracks: np.ndarray, 
                                     previous_hypotheses: np.ndarray) -> list:
         '''
-        Uses the hungarian algorithm to assign hypotheses to tracks. Tracks are initialised for
-        unassigned hypotheses and unassigned tracks are matched to the closest previous hypothesis.
+        Uses the hungarian algorithm to assign hypotheses to tracks and update each trach according '
+        to the assigned hypothesis. Tracks are initialised for unassigned hypotheses and unassigned 
+        tracks are matched to the closest previous hypothesis.
         '''
         new_tracks = []
         pseudo_track_ind = len(tracks)
         pseudo_hyp_ind = len(hypotheses)
-        pseudo_cost = 10
+        pseudo_cost = 100
         
         max_dim = max(len(tracks), len(hypotheses))
         cost_matrix = np.zeros((max_dim + 1, max_dim + 1))
@@ -73,8 +74,6 @@ class KalmanFilter:
         cost_matrix[:pseudo_track_ind, :pseudo_hyp_ind] = euclidian_distances
 
         rows, cols = linear_sum_assignment(cost_matrix)
-        unassigned_track_inds = rows[cols >= pseudo_hyp_ind]
-        unassigned_hypothesis_inds = cols[rows >= pseudo_track_ind]
         
         # assign hypotheses according to linear_sum_assignment
         assigned_inds = np.logical_and(rows < pseudo_track_ind, cols < pseudo_hyp_ind)
@@ -82,6 +81,9 @@ class KalmanFilter:
         for track, hyp in assigned_pairs:
             track.update(hyp)
             new_tracks.append(track)
+            
+        unassigned_track_inds = rows[np.logical_and(cols >= pseudo_hyp_ind, rows < pseudo_track_ind)]
+        unassigned_hypothesis_inds = cols[np.logical_and(rows >= pseudo_track_ind, cols < pseudo_hyp_ind)]
         
         # find nearest hypothesis for unassigned tracks (if it exists)
         for row in unassigned_track_inds:
