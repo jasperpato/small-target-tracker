@@ -70,7 +70,7 @@ class Slideshow(QMainWindow):
             # Draw bounding boxes
             self.painterInstance = QPainter(image)
             self.drawBoundingBoxes(pred_bboxes, gt_bboxes)
-            image = image.scaled(500, 500, Qt.KeepAspectRatio, Qt.FastTransformation)
+            image = image.scaled(700, 700, Qt.KeepAspectRatio, Qt.FastTransformation)
             self.images.append(image)
         
         self.dialog1.close()
@@ -93,41 +93,41 @@ class Slideshow(QMainWindow):
         
     def initSlideShow(self):
         self.label = QLabel(self)
-        self.label.resize(600,600)
-        self.label.move(20,20)
+        self.label.resize(700,700)
+        self.label.move(50,50)
 
         self.title = QLabel("<h3>Statistics</h3>",self)
-        self.title.move(600, 10)
+        self.title.move(760, 10)
 
         self.title1 = QLabel("<h4>Live statistics</h4>", self)
-        self.title1.move(600, 30)
+        self.title1.move(760, 30)
 
         self.title1 = QLabel("<h4>Final statistics</h4>", self)
-        self.title1.move(600,125)
+        self.title1.move(760,125)
 
         self.stat1 = QLabel("Unmatch Ground Truth : 0.00",self)
         self.stat1.adjustSize()
-        self.stat1.move(600, 50)
+        self.stat1.move(760, 50)
 
         self.stat1a = QLabel("Tracks changed : 00", self)
         self.stat1a.adjustSize()
-        self.stat1a.move(600, 100)
+        self.stat1a.move(760, 100)
 
         self.stat2 = QLabel("Average Precision Score : 00.00",self)
         self.stat2.adjustSize()
-        self.stat2.move(600, 150)
+        self.stat2.move(760, 150)
 
         self.stat3 = QLabel("Average Recall score: 00.00",self)
         self.stat3.adjustSize()
-        self.stat3.move(600, 200)
+        self.stat3.move(760, 200)
 
         self.stat4 = QLabel("Average F1 score : 00.00",self)
         self.stat4.adjustSize()
-        self.stat4.move(600, 250)
+        self.stat4.move(760, 250)
 
         self.button = QPushButton(self)
         self.button.setText("Close All")
-        self.button.move(600,300)
+        self.button.move(760,300)
         self.button.clicked.connect(self.button_clicked)
         
         self.dialog1 = ProgressBar()
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     widget = Slideshow(args.dataset_path, frame_diff=args.frame_diff, 
                        frame_range=(args.min_frame, args.max_frame))
-    widget.resize(1000,600)
+    widget.resize(1000,800)
     widget.setWindowTitle("Small target tracker")
     widget.show()
     
