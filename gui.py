@@ -243,7 +243,8 @@ class ProgressBar(QWidget):
 if __name__ == "__main__":
     args = parser.parse_args()
     app = QApplication(sys.argv)
-    widget = Slideshow(args.dataset_path, frame_diff=args.frame_diff, frame_range=(args.max_frame, args.min_frame))
+    widget = Slideshow(args.dataset_path, frame_diff=args.frame_diff, 
+                       frame_range=(args.min_frame, args.max_frame))
     widget.resize(1000,600)
     widget.setWindowTitle("Small target tracker")
     widget.show()
