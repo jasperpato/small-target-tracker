@@ -1,6 +1,5 @@
 import sys
 import argparse
-from matplotlib.pyplot import show
 import numpy as np
 import pyqtgraph as pg
 
