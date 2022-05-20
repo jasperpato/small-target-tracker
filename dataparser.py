@@ -47,7 +47,7 @@ class Dataloader(object):
                 frame_no += 1
         
     @property
-    def frames(self):
+    def frame_nums(self):
         all_frames = sorted(self.frame_paths.keys())
         return [f for f in all_frames if f >= self.frame_range[0] and f <= self.frame_range[1]]
     
