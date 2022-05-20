@@ -97,38 +97,24 @@ class Slideshow(QMainWindow):
         self.label.resize(700,700)
         self.label.move(50,50)
 
-        self.title = QLabel("<h3>Statistics</h3>",self)
+        self.title = QLabel("<h2>Statistics</h2>",self)
         self.title.move(760, 10)
-
-        self.title1 = QLabel("<h4>Live statistics</h4>", self)
-        self.title1.move(760, 30)
-
-        self.title1 = QLabel("<h4>Final statistics</h4>", self)
-        self.title1.move(760,125)
-
-        self.stat1 = QLabel("Unmatch Ground Truth : 0.00",self)
-        self.stat1.adjustSize()
-        self.stat1.move(760, 50)
-
-        self.stat1a = QLabel("Tracks changed : 00", self)
-        self.stat1a.adjustSize()
-        self.stat1a.move(760, 100)
 
         self.stat2 = QLabel("Average Precision Score : 00.00",self)
         self.stat2.adjustSize()
-        self.stat2.move(760, 150)
+        self.stat2.move(760, 50)
 
         self.stat3 = QLabel("Average Recall score: 00.00",self)
         self.stat3.adjustSize()
-        self.stat3.move(760, 200)
+        self.stat3.move(760, 100)
 
         self.stat4 = QLabel("Average F1 score : 00.00",self)
         self.stat4.adjustSize()
-        self.stat4.move(760, 250)
+        self.stat4.move(760, 150)
 
         self.button = QPushButton(self)
         self.button.setText("Close All")
-        self.button.move(760,300)
+        self.button.move(760,200)
         self.button.clicked.connect(self.button_clicked)
         
         self.dialog1 = ProgressBar()
