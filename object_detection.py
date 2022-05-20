@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
   frames = [preloaded_frames[10+j*i0] for j in (-1,0,1)]
   ctr_frame = frames[1]
-  grays = [color.rgb2gray(im) for _, im, _ in frames]
+  grays = [color.rgb2gray(im) for im, _ in frames]
   ctr_gray = grays[1]
 
   plt.figure("Gray Image")
@@ -162,7 +162,7 @@ if __name__ == '__main__':
   ax3.imshow(filtered_binary, cmap='gray')
 
   if sys.argv[1] == '--boxes':
-    for gt_box in ctr_frame[2]:
+    for gt_box in ctr_frame[1]:
       ax2.add_patch(patches.Rectangle((gt_box[0] - 0.5, gt_box[1] - 0.5), 
                                       gt_box[2], gt_box[3], 
                                       linewidth=1, edgecolor='r', facecolor='none'))
@@ -174,7 +174,7 @@ if __name__ == '__main__':
   pred_bboxes = [Box(xtl=blob.bbox[1], ytl=blob.bbox[0],
                     w=blob.bbox[3] - blob.bbox[1],
                     h=blob.bbox[2] - blob.bbox[0]) for blob in measure.regionprops(candidate_clusters)]
-  gt_bboxes = [Box(*gt_box) for gt_box in ctr_frame[2]]
+  gt_bboxes = [Box(*gt_box) for gt_box in ctr_frame[1]]
   
   print(f'==============================')
   print(f'EVALUATION RESULTS {evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7)}')
