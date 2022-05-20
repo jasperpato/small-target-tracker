@@ -49,7 +49,8 @@ class KalmanFilter:
         
     @classmethod
     def assign_detections_to_tracks(cls, hypotheses: np.ndarray, tracks: np.ndarray, 
-                                    previous_hypotheses: np.ndarray) -> list:
+                                    previous_hypotheses: np.ndarray, var:float,pcost:float,
+                                    ssim_thresh:float, ssim_rad:float) -> list:
         '''
         Uses the hungarian algorithm to assign hypotheses to tracks and update each trach according '
         to the assigned hypothesis. Tracks are initialised for unassigned hypotheses and unassigned 
@@ -58,7 +59,7 @@ class KalmanFilter:
         new_tracks = []
         pseudo_track_ind = len(tracks)
         pseudo_hyp_ind = len(hypotheses)
-        pseudo_cost = 10
+        pseudo_cost = pcost
         
         max_dim = max(len(tracks), len(hypotheses))
         cost_matrix = np.zeros((max_dim + int(PROPORTION_OF_PSEUDOS * max_dim), 
@@ -91,7 +92,7 @@ class KalmanFilter:
         # find nearest hypothesis for unassigned tracks (if it exists)
         for row in unassigned_track_inds:
             track = tracks[row]
-            nearest_hyp = track.nearest_search(previous_hypotheses)
+            nearest_hyp = track.nearest_search(previous_hypotheses, ssim_rad, ssim_thresh)
             if nearest_hyp is not None:
                 track.update(nearest_hyp)
                 new_tracks.append(track)
@@ -99,7 +100,7 @@ class KalmanFilter:
         # initialise tracks for unassigned hypotheses
         for col in unassigned_hypothesis_inds:
             hyp = hypotheses[col]
-            new_tracks.append(cls(hyp))
+            new_tracks.append(cls(hyp, covar = var))
             
         return new_tracks
     

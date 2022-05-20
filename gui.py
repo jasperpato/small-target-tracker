@@ -22,7 +22,6 @@ from skimage import color
 parser = argparse.ArgumentParser(description='Find thresholds for cue detection')
 parser.add_argument('--dataset_path', type=str, required=True, help='Path to the VISO/mot/car/{frame_no} dataset')
 parser.add_argument('--show_blobs', action='store_true', default=False, help='Show blobs instead of tracks')
-parser.add_argument('--frame_diff', type=int, default=10, help='Interframe difference to use for cue detection')
 parser.add_argument('--min_frame', type=int, default=1, help='Minimum frame number to use.')
 parser.add_argument('--max_frame', type=int, default=-1, help='Maximum frame number to use. -1 selects up to the highest frame number')
 
@@ -33,8 +32,10 @@ STEP = None
 
 
 class Slideshow(QMainWindow):
-    def __init__(self, dataset_path, frame_diff, frame_range=(1, -1), parent=None):
-        super(Slideshow, self).__init__(parent)
+    def __init__(self, dataset_path, frame_diff, h, frame_range=(1, -1), parent=None):
+        super(Slideshow, self).__init__(parent) 
+        #format of h : [covar, cost, m.thresh,m.rad,obj.thresh,region.thresh,thresh.diff]
+        self.h = h
         running_windows.append(self)
         self.initSlideShow()
         self.num_detected = []
@@ -138,10 +139,10 @@ class Slideshow(QMainWindow):
         grays = [color.rgb2gray(im) for _, im, _ in frames]
         
         # Candidate small objects detection
-        binary = objects(grays)
+        binary = objects(grays, self.h[4])
 
         # Candidate match discrimination
-        grown = grow(grays[1], binary, copy = True)
+        grown = grow(grays[1], binary, self.h[5], self.h[6],copy = True)
         filtered = filter(grown, self.morph_thresholds, copy = True)
 
         labeled_image = measure.label(filtered, background=0, connectivity=1)
@@ -150,10 +151,11 @@ class Slideshow(QMainWindow):
         
         # Application of kalman filter
         if is_start_frame:
-            self.tracks = [KalmanFilter(b, covar = 0.001) for b in blobs]
+            self.tracks = [KalmanFilter(b, covar = self.h[0]) for b in blobs]
         else:
             self.tracks = KalmanFilter.assign_detections_to_tracks(
-                np.array(blobs), np.array(self.tracks), np.array(self.previous_cues))
+                np.array(blobs), np.array(self.tracks), np.array(self.previous_cues),
+                self.h[0],self.h[1], self.h[2],self.h[3])
         
         pred_bboxes = [cand.bbox for cand in self.tracks]
         gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in frames[1][2]]
@@ -233,20 +235,81 @@ class ProgressBar(QWidget):
     def __init__(self, parent=None):
         super().__init__()
         self.pbar = QProgressBar(self)
-        self.pbar.setGeometry(30, 40, 200, 25)
+        self.pbar.setGeometry(30, 40, 250, 25)
         self.pbar.setValue(0)
         self.setWindowTitle("Launching Tracker")
         self.setGeometry(32,32,320,100)
         self.show()
 
+class Start(QWidget):
+    def __init__(self,parent = None):
+        super().__init__()
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        
+        self.layout.addWidget(QLabel("Covariance"), 0, 0, 1,1)
+        self.lineEdit1 = QLineEdit()
+        self.lineEdit1.setText("0.001")
+        self.layout.addWidget(self.lineEdit1, 0, 1, 1,1)
 
+        self.layout.addWidget(QLabel("Cost"), 0, 2, 1,1)
+        self.lineEdit2 = QLineEdit()
+        self.lineEdit2.setText("10")
+        self.layout.addWidget(self.lineEdit2, 0, 3, 1,1)
+
+        self.layout.addWidget(QLabel("Matching Threshold"), 1, 0, 1,1)
+        self.lineEdit3 = QLineEdit()
+        self.lineEdit3.setText("0.8")
+        self.layout.addWidget(self.lineEdit3, 1, 1, 1,1)
+
+        self.layout.addWidget(QLabel("Matching Radius"), 1, 2, 1,1)
+        self.lineEdit4 = QLineEdit()
+        self.lineEdit4.setText("5")
+        self.layout.addWidget(self.lineEdit4, 1, 3, 1,1)
+
+        self.layout.addWidget(QLabel("Object Threshold"), 2, 0, 1,1)
+        self.lineEdit5 = QLineEdit()
+        self.lineEdit5.setText("0.05")
+        self.layout.addWidget(self.lineEdit5, 2, 1, 1,1)
+
+        self.layout.addWidget(QLabel("Region Threshold"), 2, 2, 1,1)
+        self.lineEdit6 = QLineEdit()
+        self.lineEdit6.setText("0.005")
+        self.layout.addWidget(self.lineEdit6, 2, 3, 1,1)
+
+        self.layout.addWidget(QLabel("Frame difference"), 3, 0, 1,1)
+        self.lineEdit7 = QLineEdit()
+        self.lineEdit7.setText("5")
+        self.layout.addWidget(self.lineEdit7, 3, 1, 1,1)
+
+        self.layout.addWidget(QLabel("Threshold difference"), 3, 2, 1,1)
+        self.lineEdit8 = QLineEdit()
+        self.lineEdit8.setText("0.5")
+        self.layout.addWidget(self.lineEdit8, 3, 3, 1,1)
+
+        self.button = QPushButton("Start")
+        self.button.clicked.connect(self.start)
+        self.layout.addWidget(self.button, 4, 3, 1,1)
+
+    def start(self):
+        hyper_param = []
+        hyper_param.append(float(self.lineEdit1.text()))
+        hyper_param.append(float(self.lineEdit2.text()))
+        hyper_param.append(float(self.lineEdit3.text()))
+        hyper_param.append(float(self.lineEdit4.text()))
+        hyper_param.append(float(self.lineEdit5.text()))
+        hyper_param.append(float(self.lineEdit6.text()))
+        hyper_param.append(float(self.lineEdit8.text()))
+        self.close()
+        widget = Slideshow(args.dataset_path, int(self.lineEdit7.text()), hyper_param,
+                       frame_range=(args.min_frame, args.max_frame))
+        widget.resize(1000,800)
+        widget.setWindowTitle("Small target tracker")
+        widget.show()
+        return
 if __name__ == "__main__":
     args = parser.parse_args()
     app = QApplication(sys.argv)
-    widget = Slideshow(args.dataset_path, frame_diff=args.frame_diff, 
-                       frame_range=(args.min_frame, args.max_frame))
-    widget.resize(1000,800)
-    widget.setWindowTitle("Small target tracker")
+    widget = Start()
     widget.show()
-    
     sys.exit(app.exec())
