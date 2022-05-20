@@ -132,6 +132,10 @@ class KalmanFilter:
             y_pad = (bound_h - self.bbox.h) // 2
             x_pad = (bound_w - self.bbox.w) // 2
             im_track = np.pad(self.im_cue, ((y_pad,), (x_pad,)), constant_values=0)
+
+            # Need to build a 7x7 or bigger matrix to pass to ssim (Need to review)
+            im_track = np.pad(im_track, pad_width=3)
+            im_hyp = np.pad(im_hyp, pad_width=3)
             
             # compute ssim
             ssim = structural_similarity(im_track, im_hyp, data_range=1.0)

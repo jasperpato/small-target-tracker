@@ -48,9 +48,9 @@ class Slideshow(QMainWindow):
         self.previous_cues = None
         
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
-        frame_nums = loader.frames
+        # Had to retrieve correct number of frames so that GTboxes work
+        frame_nums = loader.frames[:frame_range[1]]
         nframes = len(frame_nums)
-
         for i in range(step, nframes - step):
             self.pbar.setValue(int(round((i - step) / (nframes - step) * 100)))
             QApplication.processEvents()
@@ -63,7 +63,6 @@ class Slideshow(QMainWindow):
             self.num_detected.append(len(pred_bboxes))
             
             # Record stats
-
             m = evaluation_metrics(np.array(pred_bboxes), np.array(gt_bboxes))
             self.precisions.append(m['precision'])
             self.recalls.append(m['recall'])
@@ -76,10 +75,16 @@ class Slideshow(QMainWindow):
             self.images.append(image)
         
         self.dialog1.close()
-        self.stat2.setText("Average Precision Score : {}".format(sum(self.precisions)/len(self.precisions)))
-        self.stat3.setText("Average Recall score: {}".format(sum(self.recalls)/len(self.recalls)))
-        self.stat4.setText("Average F1 score : {}".format(sum(self.f1)/len(self.f1)))
-        #self.graphTimeSeries()
+
+        # Update UI with metrics
+        self.precisions = np.array(self.precisions)
+        self.recalls = np.array(self.recalls)
+        self.f1 = np.array(self.f1)
+        self.changed_tracks = np.array(self.changed_tracks)
+        self.stat2.setText("Average Precision Score : {}".format(np.average(self.precisions)))
+        self.stat3.setText("Average Recall score: {}".format(np.average(self.recalls)))
+        self.stat4.setText("Average F1 score : {}".format(np.average(self.f1)))
+        self.graphTimeSeries()
         self.timer = QBasicTimer()
         self.current_frame = 0
         self.delay = 1000
@@ -178,32 +183,35 @@ class Slideshow(QMainWindow):
     def graphTimeSeries(self):
         penPrec = pg.mkPen('r', width=5)
         penRec = pg.mkPen('g', width=5)
-        
-        plt = pg.plot('Precision and Recall per frame')
+        plt = pg.plot()
         plt.addLegend()
 
         plt.plot(self.precisions, pen=penPrec, name='precision')
         plt.plot(self.recalls, pen=penRec, name='recall')
         plt.setLabel('left', 'Score')
         plt.setLabel('bottom', 'Frame no.')
+        plt.setWindowTitle('Precision and Recall per frame')
         running_windows.append(plt)
 
-        plt = pg.plot('Number of moving objects detected per frame')
+        plt = pg.plot()
         plt.plot(self.num_detected, pen=pg.mkPen(width = 5))
         plt.setLabel('left', 'Num detected')
         plt.setLabel('bottom', 'Frame no.')
+        plt.setWindowTitle('Number of moving objects detected per frame')
         running_windows.append(plt)
         
-        plt = pg.plot('Unmatched ground truth proportion per frame')
+        plt = pg.plot()
         plt.plot(1 - self.recalls, pen=pg.mkPen(width = 5))
         plt.setLabel('left', 'Num detected')
         plt.setLabel('bottom', 'Frame no.')
+        plt.setWindowTitle('Unmatched ground truth proportion per frame')
         running_windows.append(plt)
         
-        plt = pg.plot('Number of switched tracks per frame')
+        plt = pg.plot()
         plt.plot(1 - self.changed_tracks, pen=pg.mkPen(width = 5))
         plt.setLabel('left', 'Num switched tracks')
         plt.setLabel('bottom', 'Frame no.')
+        plt.setWindowTitle('Number of switched tracks per frame')
         running_windows.append(plt)
     
     

@@ -92,5 +92,10 @@ def evaluation_metrics(pred_bboxes, gt_bboxes, iou_threshold=0.7):
 
     precision = tp / (tp + fp)
     recall = tp / npos
-    f1 = 2 * precision * recall / (precision + recall)
+
+    # Just in case precision and recall are 0
+    try:
+        f1 = 2 * precision * recall / (precision + recall)
+    except:
+        f1 = 0
     return {'precision': precision, 'recall': tp / npos, 'f1': f1}
