@@ -1,5 +1,6 @@
 # Small Target Tracker
 Computer Vision Sem 1 2022 Project
+by: Allen Antony (22706998), Jason Wong (22393973), Jasper Paterson (22736341)
 
 ## Introduction
 This program tracks small objects from a sequence of satellite images found in 
