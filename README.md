@@ -13,13 +13,12 @@ https://github.com/The-Learning-And-VisionAtelier-LAVA/VISO
 2. Download the requirements to run the program with:
 > pip install -r requirements.txt
 
-3. Run the program by stating the necessary info in this format
->  gui.py [-h] --dataset_path DATASET_PATH [--show_blobs] [--min_frame MIN_FRAME]
->              [--max_frame MAX_FRAME]
-
-   The dataset path must be a path leading to a VISO/mot/[vehicle]/[file number] 
-   Example:
->  python3 gui.py -- dataset_path VISO/mot/car/001 --min_frame 1 --max_frame 100
+3. Run the program by running this line of code:
+> python3 gui.py --dataset_path [file_path] --min_frame [start] --max_frame [finish]
+>> ### Parameter info
+>> - **file_path** must be a VISO/mot/[vehicle]/[file_number]
+>> - **start** is the first frame to analyse. Must not be less than 1
+>> - **finish** is the last frame to analyse. Must not be larger than the number of images in file_path
 
 4. (Optional) Once launch you can change the parameters in the text box
 
