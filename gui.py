@@ -73,7 +73,7 @@ class Slideshow(QMainWindow):
             # Calculate number of changed tracks
             detected_gts = m['pred2gt']
             kalman2ind = dict(zip(self.tracks, detected_gts))
-            kalman2gt = {k: v for k, v in kalman2gt.items() if v != -1}
+            kalman2gt = {k: v for k, v in kalman2ind.items() if v != -1}
             num_changed_tracks = sum(kalman2gt[k] != self.kalman2gt[k] for k in kalman2gt if k in self.kalman2gt)
             self.num_changed_tracks.append(num_changed_tracks)
             self.kalman2gt = kalman2gt
