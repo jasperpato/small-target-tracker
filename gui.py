@@ -143,7 +143,7 @@ class Slideshow(QMainWindow):
         else:
             self.tracks = KalmanFilter.assign_detections_to_tracks(
                 np.array(blobs), np.array(self.tracks), np.array(self.previous_cues),
-                var=self.h[0], pcost=self.h[1], ssim_thresh=self.h[2], ssim_rad=self.h[3])
+                covar=self.h[0], pcost=self.h[1], ssim_thresh=self.h[2], ssim_rad=self.h[3])
         
         pred_bboxes = [cand.bbox for cand in self.tracks]
         gt_bboxes = [Box(gt_box[0], gt_box[1], gt_box[2], gt_box[3]) for gt_box in ctr_frame[1]]
