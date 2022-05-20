@@ -22,7 +22,7 @@ from skimage import color
 parser = argparse.ArgumentParser(description='Find thresholds for cue detection')
 parser.add_argument('--dataset_path', type=str, required=True, help='Path to the VISO/mot/car/{frame_no} dataset')
 parser.add_argument('--show_blobs', action='store_true', default=False, help='Show blobs instead of tracks')
-parser.add_argument('--step', type=int, default=10, help='Interframe difference to use for cue detection')
+parser.add_argument('--frame_diff', type=int, default=10, help='Interframe difference to use for cue detection')
 parser.add_argument('--min_frame', type=int, default=1, help='Minimum frame number to use.')
 parser.add_argument('--max_frame', type=int, default=-1, help='Maximum frame number to use. -1 selects up to the highest frame number')
 
@@ -33,7 +33,7 @@ STEP = None
 
 
 class Slideshow(QMainWindow):
-    def __init__(self, dataset_path, step, frame_range=(1, -1), parent=None):
+    def __init__(self, dataset_path, frame_diff, frame_range=(1, -1), parent=None):
         super(Slideshow, self).__init__(parent)
         running_windows.append(self)
         self.initSlideShow()
@@ -50,15 +50,15 @@ class Slideshow(QMainWindow):
         loader = Dataloader(f'{dataset_path}', img_file_pattern='*.jpg', frame_range=frame_range)
         # Had to retrieve correct number of frames so that GTboxes work
         nframes = len(loader.preloaded_frames)
-        for i in range(step, nframes - step, step):
-            self.pbar.setValue(int(round((i - step) / (nframes - step) * 100)))
+        for i in range(frame_diff, nframes - frame_diff):
+            self.pbar.setValue(int(round((i - frame_diff) / (nframes - frame_diff) * 100)))
             QApplication.processEvents()
-            f0, f1, f2 = [list(loader.preloaded_frames.values())[i+j*step] for j in (-1, 0, 1)]
+            f0, f1, f2 = [list(loader.preloaded_frames.values())[i+j*frame_diff] for j in (-1, 0, 1)]
             img_arr = Image.fromarray(f1[1], mode='RGB')
             image = QPixmap.fromImage(ImageQt.ImageQt(img_arr))
             
             # Main algorithm
-            pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==step)
+            pred_bboxes, gt_bboxes = self.processFrame((f0, f1, f2), is_start_frame=i==frame_diff)
             self.num_detected.append(len(pred_bboxes))
             
             # Record stats
@@ -242,13 +242,8 @@ class ProgressBar(QWidget):
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    dataset_path = args.dataset_path
-    step = args.step
-    max_frame = args.max_frame
-    min_frame = args.min_frame
-
     app = QApplication(sys.argv)
-    widget = Slideshow(dataset_path, step=args.step, frame_range=(min_frame, max_frame))
+    widget = Slideshow(args.dataset_path, frame_diff=args.frame_diff, frame_range=(args.max_frame, args.min_frame))
     widget.resize(1000,600)
     widget.setWindowTitle("Small target tracker")
     widget.show()
