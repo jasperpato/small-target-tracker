@@ -76,6 +76,7 @@ class Slideshow(QMainWindow):
         self.dialog1.close()
 
         # Update UI with metrics
+        self.num_detected = np.array(self.num_detected)
         self.precisions = np.array(self.precisions)
         self.recalls = np.array(self.recalls)
         self.f1 = np.array(self.f1)
