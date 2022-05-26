@@ -137,7 +137,7 @@ if __name__ == '__main__':
   dataset_path = sys.argv[index].rstrip('/')
 
   # TESTING
-  loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 100))
+  loader = Dataloader(f'{dataset_path}/car/001', img_file_pattern='*.jpg', frame_range=(1, 50))
   preloaded_frames = list(loader.preloaded_frames.values())
   i0 = 10
 
@@ -149,7 +149,7 @@ if __name__ == '__main__':
   plt.figure("Gray Image")
   plt.imshow(ctr_gray, cmap='gray')
 
-  binary = objects(grays)
+  binary = objects(grays, 0.05)
   _, ax1 = plt.subplots()
   ax1.set_title("Candidate Objects Detection")
   ax1.imshow(binary, cmap='gray')
