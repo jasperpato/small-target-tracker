@@ -52,7 +52,8 @@ class Slideshow(QMainWindow):
         # Had to retrieve correct number of frames so that GTboxes work
         frame_nums = loader.frame_nums
         for i in range(frame_diff, len(frame_nums) - frame_diff):
-            self.pbar.setValue(int(round((i - frame_diff) / (len(frame_nums) - frame_diff) * 100)))
+            progress_prop = (i - frame_diff) / (len(frame_nums) - 2 * frame_diff)
+            self.pbar.setValue(int(progress_prop * 100))
             QApplication.processEvents()
             
             f0, f1, f2 = [loader(frame_nums[i+j*frame_diff]) for j in (-1, 0, 1)]
